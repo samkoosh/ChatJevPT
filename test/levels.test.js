@@ -103,3 +103,13 @@ test("API: level and memory", async () => {
     delete process.env.JEV_MOCK;
   }
 });
+
+test("saved turns keep their level and whether they were stopped", async () => {
+  const { cleanTurn } = await import("../lib/chats.js");
+  const base = { question: "Q", answer: "Hel", tokens: 1, cost: 0 };
+  assert.equal(cleanTurn({ ...base, level: "rock", stopped: true }).level, "rock");
+  assert.equal(cleanTurn({ ...base, level: "rock", stopped: true }).stopped, true);
+  assert.equal("level" in cleanTurn({ ...base, level: "post" }), false, "only playable levels");
+  assert.equal("stopped" in cleanTurn({ ...base, stopped: "yes" }), false, "only a real true");
+  assert.equal("stopped" in cleanTurn(base), false);
+});
