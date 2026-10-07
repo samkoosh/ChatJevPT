@@ -188,3 +188,15 @@ test("a sensible answer keeps going, and the check only runs after a space", asy
   await nextCharacter("q", "The sky is bl", [], midWord);
   assert.equal(midWord.senses.length, 0);
 });
+
+test("requested repetition isn't cut off as nonsense", async () => {
+  const wanted = fakeJev((o) => (o === "D" ? 5 : 1), { sensible: 0.1, repeatOk: 0.9 });
+  const r = await nextCharacter("Say duck 6 times.", "Duck duck duck ", [], wanted);
+  assert.notEqual(r.spicy, true);
+  assert.equal(r.pick, "D");
+  assert.ok(wanted.screens[0].questions.repeat_ok, "asked alongside the sense check");
+
+  const unwanted = fakeJev(() => 1, { sensible: 0.1, repeatOk: 0.1 });
+  const r2 = await nextCharacter("Why is the sky blue?", "Duck duck duck ", [], unwanted);
+  assert.equal(r2.spicy, true);
+});
