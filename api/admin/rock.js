@@ -1,5 +1,5 @@
 import { authDisabledResponse, authenticate, badRequest, json, readJson } from "../../lib/auth.js";
-import { ROCK_INSTRUCTIONS } from "../../lib/jev.js";
+import { ROCK_INSTRUCTIONS, rockQuestions } from "../../lib/jev.js";
 import { cleanInstructions, rockInstructions, saveRockInstructions } from "../../lib/rock.js";
 
 async function gate(request) {
@@ -8,9 +8,15 @@ async function gate(request) {
   return auth;
 }
 
-const shape = (instructions) => ({ instructions, default: ROCK_INSTRUCTIONS, isDefault: instructions === ROCK_INSTRUCTIONS });
+// `questions` is the request's questions part with the saved instructions; the lab swaps in a draft.
+const shape = (instructions) => ({
+  instructions,
+  default: ROCK_INSTRUCTIONS,
+  isDefault: instructions === ROCK_INSTRUCTIONS,
+  questions: rockQuestions(instructions),
+});
 
-// GET -> { instructions, default, isDefault }
+// GET -> { instructions, default, isDefault, questions }
 export async function GET(request) {
   const { response } = await gate(request);
   return response ?? json(shape(await rockInstructions()));

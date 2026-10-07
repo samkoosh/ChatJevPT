@@ -124,7 +124,9 @@ const ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("");
 export const TOKENS_PER_CALL = 100;
 export const DEFAULT_RATING = { label: "Good", score: 3.1, tokens: 0, cost: 0 };
 export const ROCK_DEFAULT = "Which character should come next in `answer_so_far` to answer `question`?";
-export const DEFAULT_ROCK = { instructions: ROCK_DEFAULT, default: ROCK_DEFAULT, isDefault: true };
+export const ROCK_CRITERIA = { A: null, B: null, " ": "A space between words (as though the keyboard's space bar was pressed).", END: "The end of the answer." };
+export const rockQuestionsFor = (instructions) => ({ next: { type: "choice", instructions, criteria: ROCK_CRITERIA } });
+export const DEFAULT_ROCK = { instructions: ROCK_DEFAULT, default: ROCK_DEFAULT, isDefault: true, questions: rockQuestionsFor(ROCK_DEFAULT) };
 export const COST_PER_CALL = 0.0001;
 
 function topFor(pick) {

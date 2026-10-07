@@ -165,7 +165,7 @@ const labToggle = document.getElementById("rock-lab-toggle");
 const labPanel = document.getElementById("rock-lab");
 const labText = document.getElementById("rock-lab-text");
 const labStatus = document.getElementById("rock-lab-status");
-const lab = { saved: null, fallback: null, loading: null };
+const lab = { saved: null, fallback: null, questions: null, loading: null, showRequest: false };
 
 const isAdminUser = () => showAdmin();
 // The draft to send, or null when it's the same as what's saved (or there's no lab).
@@ -175,7 +175,22 @@ function labDraft() {
   return draft.trim() && draft !== lab.saved ? draft : null;
 }
 
+// The questions part of the request, with whatever is in the editor right now.
+function renderLabRequest() {
+  const view = lab.showRequest && lab.questions;
+  labText.hidden = Boolean(view);
+  document.getElementById("rock-lab-request").hidden = !view;
+  const button = document.getElementById("rock-lab-view");
+  button.textContent = view ? "Edit instructions" : "Show full request";
+  button.setAttribute("aria-pressed", String(Boolean(view)));
+  if (!view) return;
+  const { type, criteria } = lab.questions.next;
+  const questions = { next: { type, instructions: labText.value.trim() ? labText.value : lab.fallback, criteria } };
+  document.getElementById("rock-lab-request-json").textContent = JSON.stringify(questions, null, 2);
+}
+
 function renderLab() {
+  renderLabRequest();
   const draft = labDraft();
   document.getElementById("rock-lab-state").textContent =
     draft ? "Your edits (only you)" : lab.saved === lab.fallback ? "Default" : "Saved for everyone";
@@ -190,6 +205,7 @@ function loadLab() {
     .then((data) => {
       lab.saved = data.instructions;
       lab.fallback = data.default;
+      lab.questions = data.questions;
       let draft = null;
       try {
         draft = localStorage.getItem("jev-rock-draft");
@@ -232,6 +248,11 @@ async function labSave(instructions, message) {
 }
 
 labToggle.addEventListener("click", () => setLabOpen(labPanel.hidden));
+document.getElementById("rock-lab-view").addEventListener("click", () => {
+  lab.showRequest = !lab.showRequest;
+  renderLab();
+  if (!lab.showRequest) labText.focus();
+});
 document.getElementById("rock-lab-close").addEventListener("click", () => setLabOpen(false));
 labText.addEventListener("input", () => {
   try {
