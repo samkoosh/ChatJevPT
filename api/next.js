@@ -1,7 +1,8 @@
 import { ANSWER_PATTERN, LEVELS, MAX_LENGTH, PLAYABLE_LEVELS, pickNext } from "../lib/jev.js";
 import { jevErrorResponse, missingKeyResponse } from "../lib/errors.js";
-import { authenticate, budgetResponse, charge } from "../lib/auth.js";
+import { authenticate, budgetResponse, charge, isAdmin } from "../lib/auth.js";
 import { chatHistory } from "../lib/chats.js";
+import { cleanInstructions, rockInstructions } from "../lib/rock.js";
 
 export { isOutOfCredits } from "../lib/errors.js";
 
@@ -53,7 +54,14 @@ export async function handle(request, { systemOne } = {}) {
 
   let result;
   try {
-    result = await pickNext(question, answer, history, { level, memory, systemOne });
+    // Admins can try draft Rock instructions on their own answers (the in-chat Rock lab).
+    let rock;
+    if (level === "rock") {
+      const draft = auth.user && isAdmin(auth.user) && body.rockInstructions != null ? cleanInstructions(body.rockInstructions) : null;
+      if (draft?.error) return Response.json({ error: draft.error }, { status: 400 });
+      rock = draft?.value ?? (await rockInstructions());
+    }
+    result = await pickNext(question, answer, history, { level, memory, systemOne, rockInstructions: rock });
   } catch (err) {
     return jevErrorResponse(err);
   }

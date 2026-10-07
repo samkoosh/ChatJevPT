@@ -24,6 +24,10 @@ also stop early once the answer is complete. The answer types out live in a dark
     memory.
   - **Stump** (default): the full pipeline described below.
   - **Post**: locked, still in development.
+- **Rock lab** (admins): a Lab button next to Memory opens Rock's instructions right in the chat.
+  Edits apply immediately to your own Rock answers (sent with your requests; the server only accepts
+  that from admins). **Save for everyone** stores them (a `settings` table) for all Rock answers,
+  **Reset to default** puts the original back, **Discard my edits** goes back to what's saved.
 - **Memory toggle**: with memory on (the default), earlier turns in the chat are sent along, so "What
   about Germany?" after "What is the capital of France?" gets "Berlin". Off, each question stands alone
   (for the answer and its rating). Rock never uses memory. New chat starts fresh either way.

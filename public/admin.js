@@ -114,7 +114,7 @@ function renderUsers() {
       cell("Name", el("span", "who-name", u.name || "—")),
       cell("Role", role),
       cell("Status", pill),
-      cell("This month", spend),
+      cell("Spent", spend),
       cell("Tokens", tokens(u.totalTokens)),
       cell("Last seen", ago(u.lastSeenAt)),
       cell("", action),

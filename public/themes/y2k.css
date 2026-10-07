@@ -1225,3 +1225,37 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
   color: #000;
   border: 1px solid #000;
 }
+
+/* Rock lab: a Notepad window. */
+[data-ui-theme="y2k"] .rock-lab {
+  background: #c0c0c0;
+  border: 3px outset #f0f0f0;
+  border-radius: 0;
+  color: #000;
+}
+
+[data-ui-theme="y2k"] .rock-lab-help,
+[data-ui-theme="y2k"] .rock-lab-state,
+[data-ui-theme="y2k"] .rock-lab-status {
+  color: #000;
+}
+
+[data-ui-theme="y2k"] .rock-lab textarea {
+  background: #fff;
+  color: #000;
+  border: 2px inset #f0f0f0;
+  border-radius: 0;
+  font-family: "Courier New", monospace;
+}
+
+[data-ui-theme="y2k"] .lab-toggle {
+  border-radius: 0;
+  background: #c0c0c0;
+  border: 2px outset #f0f0f0;
+  color: #000;
+  font-family: "Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive;
+}
+
+[data-ui-theme="y2k"] .lab-toggle.edited {
+  background: #ff66cc;
+}
