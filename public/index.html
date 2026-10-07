@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#1f1e1c" />
     <title>ChatJevPT</title>
-    <meta name="description" content="A fake transformer: Jev picks every letter of a 140-character answer, one Choice at a time." />
+    <meta name="description" content="A fake transformer: Jev picks every letter of a 200-character answer, one Choice at a time." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,7 +21,8 @@
         <svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><use href="#spark" /></svg>
         <span>ChatJevPT</span>
       </button>
-      <span class="model-pill" title="Every character is one Jev Choice over A–Z">Jev · letter-by-letter</span>
+      <span class="model-pill" title="Every character is one Jev Choice">Jev · letter-by-letter</span>
+      <span class="cost-meter" id="cost-meter" title="Jev usage in this chat, at TypeSafe's list price" hidden></span>
       <button class="icon-btn" id="new-chat-2" title="New chat" aria-label="New chat">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
       </button>
@@ -39,7 +40,7 @@
         <form class="composer" id="composer">
           <textarea id="input" rows="1" placeholder="Ask Jev anything…" maxlength="2000" autofocus></textarea>
           <div class="composer-row">
-            <span class="hint">140 characters · one letter per call</span>
+            <span class="hint">200 characters · one letter per call</span>
             <button type="submit" class="send" id="send" aria-label="Send" disabled>
               <svg class="i-send" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
               <svg class="i-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" /></svg>

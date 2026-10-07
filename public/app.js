@@ -1,4 +1,4 @@
-const MAX_LENGTH = 140;
+const MAX_LENGTH = 200;
 
 const main = document.getElementById("main");
 const thread = document.getElementById("thread");
@@ -8,6 +8,19 @@ const send = document.getElementById("send");
 const tooltip = document.getElementById("tooltip");
 
 let controller = null; // AbortController for the answer being written
+let history = []; // finished turns in this chat, sent so Jev can follow up
+const chatUsage = { tokens: 0, cost: 0 };
+const costMeter = document.getElementById("cost-meter");
+
+const formatCost = (cost) => (cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`);
+const formatTokens = (n) => (n < 1000 ? `${n}` : `${(n / 1000).toFixed(n < 10000 ? 1 : 0)}k`);
+
+function addUsage(tokens = 0, cost = 0) {
+  chatUsage.tokens += tokens;
+  chatUsage.cost += cost;
+  costMeter.hidden = chatUsage.tokens === 0;
+  costMeter.innerHTML = `<span class="cost-label">This chat: </span><b>${formatCost(chatUsage.cost)}</b> · ${formatTokens(chatUsage.tokens)} tokens`;
+}
 
 // On touch devices, Enter inserts a newline and we don't refocus the input,
 // which would pop the keyboard over the answer.
@@ -43,11 +56,11 @@ function scrollToBottom() {
   if (nearBottom) window.scrollTo({ top: document.body.scrollHeight });
 }
 
-async function fetchNext(question, answer, signal) {
+async function fetchNext(question, answer, priorTurns, signal) {
   const res = await fetch("/api/next", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ question, answer }),
+    body: JSON.stringify({ question, answer, history: priorTurns }),
     signal,
   });
   const data = await res.json().catch(() => ({}));
@@ -55,7 +68,7 @@ async function fetchNext(question, answer, signal) {
   return data;
 }
 
-function renderMeta(meta, { length, calls, ms, done, answerText, question }) {
+function renderMeta(meta, { length, calls, ms, cost, done, answerText, question }) {
   meta.innerHTML = "";
   const bar = el("span", "bar");
   const fill = el("i");
@@ -64,6 +77,7 @@ function renderMeta(meta, { length, calls, ms, done, answerText, question }) {
   meta.append(bar, el("span", null, `${length}/${MAX_LENGTH}`));
   meta.append(el("span", null, `${calls} Jev call${calls === 1 ? "" : "s"}`));
   meta.append(el("span", null, `${(ms / 1000).toFixed(1)}s`));
+  meta.append(el("span", null, formatCost(cost)));
   if (!done) return;
 
   const copy = el("button", "act");
@@ -112,15 +126,19 @@ async function ask(question) {
   controller = new AbortController();
   setBusy(true);
   const started = performance.now();
+  const priorTurns = history.slice(-6);
   let answer = "";
   let calls = 0;
+  let cost = 0;
   const text = () => answer.trim();
-  const stats = (done) => ({ length: answer.length, calls, ms: performance.now() - started, done, answerText: text, question });
+  const stats = (done) => ({ length: answer.length, calls, ms: performance.now() - started, cost, done, answerText: text, question });
 
   try {
     while (answer.length < MAX_LENGTH) {
-      const { pick, char, top, tied, coinFlip } = await fetchNext(question, answer, controller.signal);
+      const { pick, char, top, tied, coinFlip, tokens, cost: stepCost } = await fetchNext(question, answer, priorTurns, controller.signal);
       calls++;
+      cost += stepCost ?? 0;
+      addUsage(tokens, stepCost);
       thinking.remove();
       if (pick === "END") break;
 
@@ -145,6 +163,7 @@ async function ask(question) {
     caret.remove();
     msg.classList.remove("typing");
     if (!answer) answerEl.remove();
+    else history.push({ question, answer: answer.trim() });
     renderMeta(meta, stats(true));
     controller = null;
     setBusy(false);
@@ -183,6 +202,10 @@ document.getElementById("suggestions").addEventListener("click", (event) => {
 function newChat() {
   controller?.abort();
   thread.innerHTML = "";
+  history = [];
+  chatUsage.tokens = 0;
+  chatUsage.cost = 0;
+  costMeter.hidden = true;
   main.classList.add("empty");
   refocus();
 }

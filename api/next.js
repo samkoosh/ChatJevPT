@@ -23,7 +23,7 @@ export async function POST(request) {
   }
 
   try {
-    return Response.json(await nextCharacter(question, answer));
+    return Response.json(await nextCharacter(question, answer, body.history));
   } catch (err) {
     console.error(err);
     if (isOutOfCredits(err)) {
@@ -40,7 +40,7 @@ export async function POST(request) {
 
 // The SDK has no dedicated error class for an exhausted balance, so match on
 // 402 Payment Required or a billing-related message in any error response.
-function isOutOfCredits(err) {
+export function isOutOfCredits(err) {
   if (err?.status === 402) return true;
   if (!err?.status) return false;
   const text = `${err.message ?? ""} ${typeof err.body === "string" ? err.body : JSON.stringify(err.body ?? "")}`;

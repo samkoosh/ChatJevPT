@@ -104,6 +104,26 @@ svg {
   padding: 3px 10px;
 }
 
+.cost-meter {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cost-meter b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.cost-meter + .icon-btn {
+  margin-left: 0;
+}
+
 .icon-btn {
   margin-left: auto;
   width: 36px;
@@ -208,6 +228,7 @@ main.empty .thread {
 }
 
 .answer {
+  white-space: pre-wrap;
   font-family: var(--serif);
   font-size: 18px;
   line-height: 1.65;
@@ -572,6 +593,12 @@ main:not(.empty) .composer-wrap {
   }
   .answer {
     font-size: 17px;
+  }
+}
+
+@media (max-width: 440px) {
+  .cost-label {
+    display: none;
   }
 }
 
