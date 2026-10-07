@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f1e1c" />
+    <title>ChatGPJev</title>
+    <meta name="description" content="A fake transformer: Jev picks every letter of a 140-character answer, one Choice at a time." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <button class="brand" id="new-chat" title="New chat">
+        <svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><use href="#spark" /></svg>
+        <span>ChatGPJev</span>
+      </button>
+      <span class="model-pill" title="Every character is one Jev Choice over A–Z">Jev · letter-by-letter</span>
+      <button class="icon-btn" id="new-chat-2" title="New chat" aria-label="New chat">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      </button>
+    </header>
+
+    <main id="main" class="empty">
+      <section class="hero" id="hero">
+        <svg class="spark hero-spark" viewBox="0 0 24 24" aria-hidden="true"><use href="#spark" /></svg>
+        <h1 id="greeting">What should Jev spell out?</h1>
+      </section>
+
+      <div class="thread" id="thread" aria-live="polite"></div>
+
+      <div class="composer-wrap">
+        <form class="composer" id="composer">
+          <textarea id="input" rows="1" placeholder="Ask Jev anything…" maxlength="2000" autofocus></textarea>
+          <div class="composer-row">
+            <span class="hint">140 characters · one letter per call</span>
+            <button type="submit" class="send" id="send" aria-label="Send" disabled>
+              <svg class="i-send" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+              <svg class="i-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" /></svg>
+            </button>
+          </div>
+        </form>
+        <div class="suggestions" id="suggestions">
+          <button type="button">What is the capital of France?</button>
+          <button type="button">Why is the sky blue?</button>
+          <button type="button">How do transformers work?</button>
+          <button type="button">Write a haiku about cats</button>
+        </div>
+        <p class="disclaimer">Jev picks one letter at a time with no plan. It can make mistakes. It will make mistakes.</p>
+      </div>
+    </main>
+
+    <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+    <svg width="0" height="0" style="position: absolute">
+      <symbol id="spark" viewBox="0 0 24 24">
+        <path
+          d="M12 1.5c.4 4.9 1.6 7.6 3.3 8.9 1.7 1.3 4.2 1.6 7.2 1.6-3 0-5.5.3-7.2 1.6-1.7 1.3-2.9 4-3.3 8.9-.4-4.9-1.6-7.6-3.3-8.9C7 12.3 4.5 12 1.5 12c3 0 5.5-.3 7.2-1.6C10.4 9.1 11.6 6.4 12 1.5Z"
+        />
+      </symbol>
+    </svg>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
