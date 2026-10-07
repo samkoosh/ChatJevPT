@@ -24,7 +24,8 @@ also stop early once the answer is complete. The answer types out live in a dark
     answer so far; the most probable character wins. No word list, no
     screening, no memory.
   - **Stump** (default): the full pipeline described below.
-  - **Post**: locked, still in development.
+  - **Post**: an experiment. Each character starts with a round that asks only what *kind* of
+    character comes next, then runs Stump's checks within that kind (see [Post](#post-kind-first)).
 - **Rock lab** (admins): a Lab button next to Memory opens Rock's instructions right in the chat.
   Edits apply immediately to your own Rock answers (sent with your requests; the server only accepts
   that from admins). **Save for everyone** stores them (a `settings` table) for all Rock answers,
@@ -119,6 +120,23 @@ Code, not Jev, enforces the mechanical rules, so Jev never sees an option that b
 - Punctuation `. , ! ? : ; ' -` only where it makes sense, e.g. no space before a period. Quotes and
   parentheses were left out because Jev looped on them.
 - No word repeated back to back, no stutters ("sss", "ndndnd"), no word longer than 18 letters.
+
+### Post: kind first
+
+Post splits each character into "what kind?" and "which one?":
+
+1. **Kind**, a Choice over the kinds of character code allows here: **Letter, Number, Space, Line
+   break, Punctuation, End of answer** (each described in context, e.g. `Another letter in the word
+   "Be"`, or the punctuation marks that fit). Stump's `done`, `word_done` and `repeat_ok` checks are
+   asked in the same request, and the sense check runs alongside, with the same thresholds: a spicy
+   or finished answer stops, an unfinished word rules out Space, Punctuation that ends it and End, and
+   a loop that wasn't asked for can't be finished. The best kind still open wins; ties get runoffs.
+2. **Which one**: a space, a line break or the end is the only character of its kind, so it's done.
+   Otherwise Stump's screening (one Noul per character of that kind) and ranking Choice (with
+   runoffs) pick among that kind's characters only.
+
+The tooltip on a Post character also shows the kind round's probabilities. A letter costs three
+requests (kind, screening, ranking), a space one.
 
 Jev is good at short factual answers ("Paris", "Blue", "1969") and drifts into real-but-rambling words
 on long ones. That's the joke.

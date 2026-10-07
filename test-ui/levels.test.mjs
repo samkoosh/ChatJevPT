@@ -65,11 +65,25 @@ test("Rock: requests say rock, memory is off and greyed out, and the choice is r
   assert.equal(await level(page, "rock").getAttribute("aria-checked"), "true", "remembered");
 });
 
-test("Post is locked", async () => {
+test("Post: requests say post, memory stays on, and the tooltip shows the kind round", async () => {
   const page = await open();
-  assert.ok(await level(page, "post").isDisabled());
-  assert.match(await level(page, "post").getAttribute("title"), /in development/);
-  assert.equal(await level(page, "stump").getAttribute("aria-checked"), "true");
+  await level(page, "post").click();
+  assert.equal(await level(page, "post").getAttribute("aria-checked"), "true");
+  assert.equal(await page.locator("#memory-toggle").isDisabled(), false);
+
+  const kinds = [{ option: "LETTER", p: 0.9 }, { option: "SPACE", p: 0.1 }];
+  const fake = scripted("Hi", { overrides: { 0: { kind: "LETTER", kinds } } });
+  await page.route("**/api/next", fake);
+  await ask(page, "Q");
+  assert.ok(fake.requests.every((r) => r.level === "post" && r.memory === true));
+  assert.match(await page.locator(".meta .level-tag").textContent(), /Post/);
+
+  await page.locator(".answer .ch").first().hover();
+  await page.locator("#tooltip").waitFor({ state: "visible", ...T });
+  assert.equal(await page.locator("#tooltip .screen-note").first().textContent(), "Kind: letter 90% · space 10%");
+
+  await page.reload();
+  assert.equal(await level(page, "post").getAttribute("aria-checked"), "true", "remembered");
 });
 
 test("memory off: requests and the rating say memory false, and it's remembered", async () => {
