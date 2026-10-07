@@ -139,7 +139,7 @@ describe("avatar menu", () => {
     const menu = page.locator("#account-menu");
     await menu.waitFor({ state: "visible", ...T });
     assert.equal(await menu.locator("#account-email").textContent(), "friend@example.com");
-    assert.equal(await menu.locator("#usage-text").textContent(), "Usage: $0.12 of $1.00 this month");
+    assert.equal(await menu.locator("#usage-text").textContent(), "Usage: $0.12 of $1.00");
     assert.ok(await menu.locator("#usage-bar").isVisible());
     assert.equal(await page.locator("#usage-fill").evaluate((n) => n.style.width), "12%");
     assert.ok(await page.locator("#admin-link").isHidden(), "no Admin link for users");
@@ -157,7 +157,7 @@ describe("avatar menu", () => {
     await page.locator("#account-btn img").waitFor(T);
     await page.click("#account-btn");
     await page.locator("#account-menu").waitFor({ state: "visible", ...T });
-    assert.equal(await page.locator("#usage-text").textContent(), "Usage: $0.12 this month · no limit");
+    assert.equal(await page.locator("#usage-text").textContent(), "Usage: $0.12 total · no limit");
     assert.ok(await page.locator("#usage-bar").isHidden());
     assert.ok(await page.locator("#admin-link").isVisible());
     assert.equal(await page.locator("#admin-link").getAttribute("href"), "/admin.html");
@@ -257,7 +257,7 @@ describe("chats sidebar", () => {
     const writes = accounts.log.filter((l) => l.call !== "GET /api/me" && l.call !== "GET /api/chats");
     assert.deepEqual(writes.map((l) => l.call), ["POST /api/chats", "PUT /api/chats/new-1", "PUT /api/chats/new-1"]);
     assert.ok(next.requests.every((r) => r.chatId === "new-1" && !("history" in r)), "chatId instead of history");
-    assert.deepEqual(rate.requests[0], { question: "Capital of France?", answer: "Paris", chatId: "new-1" });
+    assert.deepEqual(rate.requests[0], { question: "Capital of France?", answer: "Paris", memory: true, chatId: "new-1" });
 
     const [, turnPut, ratingPut] = writes;
     assert.deepEqual(Object.keys(turnPut.body), ["turn"]);
@@ -274,7 +274,7 @@ describe("chats sidebar", () => {
     assert.equal(next.requests.at(-1).chatId, "new-1");
   });
 
-  test("budget_exhausted shows the monthly budget notice", async () => {
+  test("budget_exhausted shows the allowance notice", async () => {
     const accounts = fakeAccounts();
     const message = "You've used this month's ChatJevPT budget ($1.00). It resets on November 1.";
     const page = await open(accounts, {
@@ -285,7 +285,7 @@ describe("chats sidebar", () => {
     await waitAnswered(page);
     const notice = page.locator(".msg-jev .notice");
     await notice.waitFor(T);
-    assert.equal(await notice.locator("strong").textContent(), "Monthly budget used");
+    assert.equal(await notice.locator("strong").textContent(), "Allowance used up");
     assert.equal(await notice.locator("p").textContent(), message);
     assert.equal(await page.locator(".error").count(), 0);
   });
@@ -325,9 +325,9 @@ describe("mobile (iPhone 13)", () => {
 describe("admin page", () => {
   const LISTING = {
     users: [
-      { email: "owner@example.com", name: "Owner", role: "admin", status: "allowed", monthCostMicros: 2_500_000, monthTokens: 61000, budgetMicros: null, lastSeenAt: minutesAgo(1) },
-      { email: "friend@example.com", name: "Friend", role: "user", status: "allowed", monthCostMicros: 120_000, monthTokens: 3400, budgetMicros: 1_000_000, lastSeenAt: minutesAgo(120) },
-      { email: "gone@example.com", name: null, role: "user", status: "blocked", monthCostMicros: 0, monthTokens: 0, budgetMicros: 1_000_000, lastSeenAt: null },
+      { email: "owner@example.com", name: "Owner", role: "admin", status: "allowed", totalCostMicros: 2_500_000, totalTokens: 61000, budgetMicros: null, lastSeenAt: minutesAgo(1) },
+      { email: "friend@example.com", name: "Friend", role: "user", status: "allowed", totalCostMicros: 120_000, totalTokens: 3400, budgetMicros: 1_000_000, lastSeenAt: minutesAgo(120) },
+      { email: "gone@example.com", name: null, role: "user", status: "blocked", totalCostMicros: 0, totalTokens: 0, budgetMicros: 1_000_000, lastSeenAt: null },
     ],
     requests: [{ email: "new@example.com", name: "Newbie", requestedAt: minutesAgo(10) }],
     defaultBudgetMicros: 1_000_000,

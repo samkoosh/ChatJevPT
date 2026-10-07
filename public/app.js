@@ -33,11 +33,11 @@ function addUsage(tokens = 0, cost = 0) {
   costMeter.innerHTML = `<span class="cost-label">This chat: </span><b>${formatCost(chatUsage.cost)}</b> · ${formatTokens(chatUsage.tokens)} tokens`;
 }
 
-// Counts a Jev call toward this month's usage in the account menu (the server charges it too).
+// Counts a Jev call toward their total usage in the account menu (the server charges it too).
 function bill(tokens = 0, cost = 0) {
   if (!me.usage) return;
-  me.usage.monthCostMicros += Math.round(cost * 1e6);
-  me.usage.monthTokens += tokens;
+  me.usage.totalCostMicros += Math.round(cost * 1e6);
+  me.usage.totalTokens += tokens;
   renderUsage();
 }
 
@@ -90,13 +90,58 @@ async function api(method, path, body, signal) {
 // A saved chat sends its id; the server ignores client history then.
 const context = (priorTurns, savedChat) => (savedChat ? { chatId: savedChat } : { history: priorTurns });
 
-function fetchNext(question, answer, priorTurns, signal, savedChat) {
-  return api("POST", "/api/next", { question, answer, ...context(priorTurns, savedChat) }, signal);
+function fetchNext(question, answer, priorTurns, signal, savedChat, { level, memory }) {
+  return api("POST", "/api/next", { question, answer, level, memory, ...context(priorTurns, savedChat) }, signal);
 }
 
-function fetchRating(question, answer, priorTurns, savedChat) {
-  return api("POST", "/api/rate", { question, answer, ...context(priorTurns, savedChat) });
+function fetchRating(question, answer, priorTurns, savedChat, { memory }) {
+  return api("POST", "/api/rate", { question, answer, memory, ...context(priorTurns, savedChat) });
 }
+
+// Model level ("dumb as a ___") and chat memory, chosen in the composer and remembered.
+const LEVEL_NAMES = { rock: "Rock", stump: "Stump", post: "Post" };
+const prefs = { level: "stump", memory: true };
+try {
+  const level = localStorage.getItem("jev-level");
+  if (level === "rock" || level === "stump") prefs.level = level;
+  if (localStorage.getItem("jev-memory") === "off") prefs.memory = false;
+} catch {}
+
+const levelButtons = [...document.querySelectorAll(".level-option")];
+const memoryToggle = document.getElementById("memory-toggle");
+
+function renderPrefs() {
+  for (const b of levelButtons) b.setAttribute("aria-checked", String(b.dataset.level === prefs.level));
+  const rock = prefs.level === "rock";
+  memoryToggle.disabled = rock;
+  memoryToggle.setAttribute("aria-pressed", String(prefs.memory && !rock));
+  memoryToggle.title = rock
+    ? "Rocks don't remember anything"
+    : prefs.memory
+      ? "Memory on: Jev sees earlier questions in this chat"
+      : "Memory off: each question stands alone";
+}
+
+function savePref(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+}
+
+for (const b of levelButtons) {
+  b.addEventListener("click", () => {
+    if (b.disabled || b.dataset.level === "post") return;
+    prefs.level = b.dataset.level;
+    savePref("jev-level", prefs.level);
+    renderPrefs();
+  });
+}
+memoryToggle.addEventListener("click", () => {
+  prefs.memory = !prefs.memory;
+  savePref("jev-memory", prefs.memory ? "on" : "off");
+  renderPrefs();
+});
+renderPrefs();
 
 const RATING_HINT = {
   Terrible: "wrong or gibberish",
@@ -113,9 +158,10 @@ function ratingChip(rating) {
   return chip;
 }
 
-function renderMeta(meta, { length, ms, cost, done, rating, answerText, question, stop }) {
+function renderMeta(meta, { length, ms, cost, done, rating, answerText, question, level, stop }) {
   meta.innerHTML = "";
   if (rating) meta.append(ratingChip(rating));
+  if (level) meta.append(el("span", `level-tag level-${level}`, LEVEL_NAMES[level]));
   if (!done) {
     const bar = el("span", "bar");
     const fill = el("i");
@@ -167,7 +213,7 @@ function spicyNotice() {
 // Errors that get a notice instead of a plain error line.
 const NOTICES = {
   out_of_credits: "Out of Jev credits",
-  budget_exhausted: "Monthly budget used",
+  budget_exhausted: "Allowance used up",
   chat_limit: "Chat limit reached",
   chat_full: "This chat is full",
 };
@@ -205,6 +251,7 @@ async function ask(question) {
   setBusy(true);
   const started = performance.now();
   const priorTurns = history.slice(-6);
+  const settings = { level: prefs.level, memory: prefs.memory && prefs.level !== "rock" }; // fixed for this answer
   const myChat = chatEpoch;
   let savedChat = signedIn() ? activeChatId : null;
   let lostSession = null;
@@ -217,13 +264,13 @@ async function ask(question) {
   const text = () => answer.trim();
   const stats = (done) => {
     if (!done) ms = performance.now() - started; // the clock stops when the answer does
-    return { length: answer.length, ms, cost, done, rating, answerText: text, question, stop: () => myController.abort() };
+    return { length: answer.length, ms, cost, done, rating, answerText: text, question, level: settings.level, stop: () => myController.abort() };
   };
 
   try {
     if (signedIn() && !savedChat) savedChat = await createChat(controller.signal);
     while (answer.length < MAX_LENGTH) {
-      const step = await fetchNext(question, answer, priorTurns, controller.signal, savedChat);
+      const step = await fetchNext(question, answer, priorTurns, controller.signal, savedChat, settings);
       const { pick, char, top, tied, coinFlip, screened, cost: stepCost } = step;
       tokens += step.tokens ?? 0;
       cost += stepCost ?? 0;
@@ -279,7 +326,7 @@ async function ask(question) {
   // Once the answer is done, Jev grades it (with the same chat context it answered with).
   if (rating !== "pending") return;
   try {
-    const result = await fetchRating(question, answer.trim(), priorTurns, savedChat);
+    const result = await fetchRating(question, answer.trim(), priorTurns, savedChat, settings);
     rating = result;
     emit("jev:rated", result.label);
     tokens += result.tokens ?? 0;
@@ -446,17 +493,17 @@ function applyAccount() {
   renderUsage();
 }
 
-// Admins have no budget (budgetMicros null): just the month's spend, no bar.
+// Admins have no budget (budgetMicros null): just their total spend, no bar.
 function renderUsage() {
   if (!me.usage) return;
-  const { monthCostMicros, budgetMicros } = me.usage;
+  const { totalCostMicros, budgetMicros } = me.usage;
   const unlimited = budgetMicros == null;
   document.getElementById("usage-text").textContent = unlimited
-    ? `Usage: ${formatUsd(monthCostMicros)} this month · no limit`
-    : `Usage: ${formatUsd(monthCostMicros)} of ${formatUsd(budgetMicros)} this month`;
+    ? `Usage: ${formatUsd(totalCostMicros)} total · no limit`
+    : `Usage: ${formatUsd(totalCostMicros)} of ${formatUsd(budgetMicros)}`;
   document.getElementById("usage-bar").hidden = unlimited;
   if (unlimited) return;
-  const share = budgetMicros > 0 ? Math.min(1, monthCostMicros / budgetMicros) : 1;
+  const share = budgetMicros > 0 ? Math.min(1, totalCostMicros / budgetMicros) : 1;
   const fill = document.getElementById("usage-fill");
   fill.style.width = `${share * 100}%`;
   fill.classList.toggle("full", share >= 1);

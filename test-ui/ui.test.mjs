@@ -410,7 +410,7 @@ describe("answer rating", () => {
     await page.locator(".msg-jev .rating-perfect").first().waitFor(T);
     assert.equal(await chip.textContent(), "Perfect");
     assert.match(await chip.getAttribute("title"), /Perfect \(3\.8 of 4\)/);
-    assert.deepEqual(rate.requests[0], { question: "One", answer: "Paris", history: [] });
+    assert.deepEqual(rate.requests[0], { question: "One", answer: "Paris", memory: true, history: [] });
 
     // Rating cost counts toward the answer and the chat: 6 calls + 1 rating.
     assert.match(await page.locator(".meta").first().innerText(), /\$0\.0008/);

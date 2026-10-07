@@ -1,4 +1,4 @@
-// Admin page: who can sign in, their monthly budgets, and pending access requests.
+// Admin page: who can sign in, their allowances, and pending access requests.
 const usersBody = document.getElementById("users");
 const requestsList = document.getElementById("requests");
 const status = document.getElementById("status");
@@ -82,23 +82,23 @@ function renderUsers() {
     const line = el("span", "spend-line");
     if (u.budgetMicros == null) {
       // Admins have no budget; their usage still shows.
-      line.append(el("span", "spent", usd(u.monthCostMicros)), el("span", "no-limit", "· no limit"));
+      line.append(el("span", "spent", usd(u.totalCostMicros)), el("span", "no-limit", "· no limit"));
       spend.append(line);
     } else {
       const budget = el("input", "budget-input");
       Object.assign(budget, { type: "number", min: "0", max: "1000", step: "0.01", value: (u.budgetMicros / 1e6).toFixed(2) });
-      budget.setAttribute("aria-label", `Monthly budget for ${u.email}`);
+      budget.setAttribute("aria-label", `Allowance for ${u.email}`);
       budget.onchange = () => {
         const value = budget.value.trim() === "" ? null : Number(budget.value);
         save(u.email, { budgetUsd: value }, `Budget for ${u.email} saved.`);
       };
       const bar = el("span", "usage-bar");
       const fill = el("i");
-      const share = u.budgetMicros > 0 ? Math.min(1, u.monthCostMicros / u.budgetMicros) : 1;
+      const share = u.budgetMicros > 0 ? Math.min(1, u.totalCostMicros / u.budgetMicros) : 1;
       fill.style.width = `${share * 100}%`;
       if (share >= 1) fill.className = "full";
       bar.append(fill);
-      line.append(el("span", "spent", usd(u.monthCostMicros)), el("span", null, " of $"), budget);
+      line.append(el("span", "spent", usd(u.totalCostMicros)), el("span", null, " of $"), budget);
       spend.append(line, bar);
     }
 
@@ -115,7 +115,7 @@ function renderUsers() {
       cell("Role", role),
       cell("Status", pill),
       cell("This month", spend),
-      cell("Tokens", tokens(u.monthTokens)),
+      cell("Tokens", tokens(u.totalTokens)),
       cell("Last seen", ago(u.lastSeenAt)),
       cell("", action),
     );
@@ -146,7 +146,7 @@ function renderRequests() {
 function render() {
   const def = usd(state.defaultBudgetMicros);
   document.getElementById("lede").textContent =
-    `People on this list can sign in with Google. Each gets ${def} of Jev a month unless you set their own budget; usage resets on the 1st (UTC).`;
+    `People on this list can sign in with Google. Each gets ${def} of Jev in total unless you set their own allowance. Admins have no limit.`;
   document.getElementById("add-budget").placeholder = (state.defaultBudgetMicros / 1e6).toFixed(2);
   renderRequests();
   renderUsers();

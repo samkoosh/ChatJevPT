@@ -7,7 +7,7 @@ import { fakeJev } from "./helpers.js";
 
 const CLIENT_ID = "test-client.apps.googleusercontent.com";
 const AUTH_ENV = { GOOGLE_CLIENT_ID: CLIENT_ID, SESSION_SECRET: "test-secret-0123456789", STORE: "memory", ADMIN_EMAILS: "Owner@Example.com" };
-for (const name of ["DATABASE_URL", "DEV_LOGIN_EMAIL", "VERCEL", "DEFAULT_MONTHLY_BUDGET_USD", "JEV_MOCK"]) delete process.env[name];
+for (const name of ["DATABASE_URL", "DEV_LOGIN_EMAIL", "VERCEL", "DEFAULT_BUDGET_USD", "JEV_MOCK"]) delete process.env[name];
 Object.assign(process.env, AUTH_ENV, { TYPESAFE_API_KEY: "unused-the-tests-inject-jev" });
 
 const auth = await import("../lib/auth.js");
@@ -88,7 +88,7 @@ async function withEnv(vars, fn) {
 }
 
 const json = (res) => res.json();
-const monthStart = auth.monthStart();
+const usageSince = auth.usageSince();
 
 beforeEach(() => setStore(memoryStore()));
 
@@ -210,7 +210,7 @@ describe("allowlist", () => {
     // Asking twice keeps one request.
     await google.POST(req("POST", "/api/auth/google", { body: { credential: await googleToken() } }));
     assert.equal((await getStore().listRequests()).length, 1);
-    assert.equal(await getStore().getUser("friend@example.com", monthStart), null, "not added as a user");
+    assert.equal(await getStore().getUser("friend@example.com", usageSince), null, "not added as a user");
   });
 
   test("an allowed person signs in and gets a session cookie", async () => {
@@ -223,7 +223,7 @@ describe("allowlist", () => {
     assert.deepEqual(body, {
       authEnabled: true,
       user: { email: "friend@example.com", name: "Friend", picture: "https://example.com/p.png", role: "user" },
-      usage: { monthCostMicros: 0, monthTokens: 0, budgetMicros: 1_000_000 },
+      usage: { totalCostMicros: 0, totalTokens: 0, budgetMicros: 250_000 },
     });
     const meRes = await me.GET(req("GET", "/api/me", { cookie: cookie.split(";")[0] }));
     assert.deepEqual(await json(meRes), body);
@@ -236,7 +236,7 @@ describe("allowlist", () => {
     assert.equal(body.user.email, "owner@example.com");
     assert.equal(body.user.role, "admin");
     assert.equal(body.usage.budgetMicros, null);
-    const user = await getStore().getUser("owner@example.com", monthStart);
+    const user = await getStore().getUser("owner@example.com", usageSince);
     assert.equal(user.role, "admin");
     assert.equal(user.status, "allowed");
   });
@@ -336,13 +336,13 @@ describe("budgets and charging", () => {
     assert.equal(res.status, 200);
     const step = await json(res);
     assert.equal(step.tokens, jev.requests.length * 100);
-    const user = await getStore().getUser("friend@example.com", monthStart);
-    assert.equal(user.monthTokens, step.tokens);
-    assert.equal(user.monthCostMicros, Math.round(step.cost * 1e6));
+    const user = await getStore().getUser("friend@example.com", usageSince);
+    assert.equal(user.totalTokens, step.tokens);
+    assert.equal(user.totalCostMicros, Math.round(step.cost * 1e6));
 
     const rated = await json(await rate.handle(req("POST", "/api/rate", { body: { question: "Hi", answer: "Hello" }, cookie }), jev));
     assert.equal(rated.label, "Good");
-    assert.equal((await getStore().getUser("friend@example.com", monthStart)).monthTokens, step.tokens + 100);
+    assert.equal((await getStore().getUser("friend@example.com", usageSince)).totalTokens, step.tokens + 100);
   });
 
   test("extra result fields reach the client untouched", async () => {
@@ -356,7 +356,7 @@ describe("budgets and charging", () => {
     assert.equal(step.screened, 0);
   });
 
-  test("once the month's budget is used up, Jev calls get 402 budget_exhausted", async () => {
+  test("once the allowance is used up, Jev calls get 402 budget_exhausted", async () => {
     const cookie = await addUser("friend@example.com", { budgetMicros: 10_000 });
     await getStore().charge("friend@example.com", new Date().toISOString().slice(0, 10), 5000, 10_000);
     const jev = spendingJev();
@@ -368,21 +368,27 @@ describe("budgets and charging", () => {
       assert.equal(res.status, 402);
       const data = await json(res);
       assert.equal(data.code, "budget_exhausted");
-      assert.match(data.error, /^You've used this month's ChatJevPT budget \(\$0\.01\)\. It resets on [A-Z][a-z]+ 1\.$/);
+      assert.equal(data.error, "You've used your ChatJevPT allowance ($0.01). Ask the owner if you'd like more.");
     }
     assert.equal(jev.requests.length, 0, "Jev was never called");
   });
 
-  test("last month's usage doesn't count", async () => {
+  test("the allowance is a lifetime total: old usage still counts", async () => {
     const cookie = await addUser("friend@example.com", { budgetMicros: 10_000 });
-    await getStore().charge("friend@example.com", "2000-01-15", 5000, 10_000_000);
+    await getStore().charge("friend@example.com", "2000-01-15", 5000, 6_000);
+    await getStore().charge("friend@example.com", new Date().toISOString().slice(0, 10), 5000, 4_000);
     const res = await next.handle(req("POST", "/api/next", { body: { question: "Hi", answer: "" }, cookie }), spendingJev());
-    assert.equal(res.status, 200);
+    assert.equal(res.status, 402);
   });
 
-  test("DEFAULT_MONTHLY_BUDGET_USD is the fallback budget", async () => {
+  test("the default allowance is $0.25", async () => {
     const cookie = await addUser("friend@example.com");
-    await withEnv({ DEFAULT_MONTHLY_BUDGET_USD: "2.5" }, async () => {
+    assert.equal((await json(await me.GET(req("GET", "/api/me", { cookie })))).usage.budgetMicros, 250_000);
+  });
+
+  test("DEFAULT_BUDGET_USD is the fallback budget", async () => {
+    const cookie = await addUser("friend@example.com");
+    await withEnv({ DEFAULT_BUDGET_USD: "2.5" }, async () => {
       assert.equal((await json(await me.GET(req("GET", "/api/me", { cookie })))).usage.budgetMicros, 2_500_000);
     });
   });
@@ -398,12 +404,12 @@ describe("budgets and charging", () => {
       const jev = spendingJev();
       const res = await next.handle(req("POST", "/api/next", { body: { question: "Hi", answer: "" }, cookie: c }), jev);
       assert.equal(res.status, 200, email);
-      const user = await getStore().getUser(email, monthStart);
-      assert.equal(user.monthTokens, 1000 + jev.requests.length * 100, `${email} charged`);
+      const user = await getStore().getUser(email, usageSince);
+      assert.equal(user.totalTokens, 1000 + jev.requests.length * 100, `${email} charged`);
       const meBody = await json(await me.GET(req("GET", "/api/me", { cookie: c })));
       assert.equal(meBody.usage.budgetMicros, null);
       assert.equal(meBody.user.role, "admin");
-      assert.ok(meBody.usage.monthCostMicros >= 50_000_000);
+      assert.ok(meBody.usage.totalCostMicros >= 50_000_000);
     }
   });
 
@@ -415,13 +421,13 @@ describe("budgets and charging", () => {
     );
     const total = results.reduce((sum, r) => sum + r.tokens, 0);
     assert.equal(total, jev.requests.length * 100);
-    assert.equal((await getStore().getUser("friend@example.com", monthStart)).monthTokens, total);
+    assert.equal((await getStore().getUser("friend@example.com", usageSince)).totalTokens, total);
 
     const store = getStore();
     await Promise.all(Array.from({ length: 200 }, () => store.charge("x@example.com", "2030-05-02", 3, 7)));
     await store.saveUser("x@example.com", {});
     const x = await store.getUser("x@example.com", "2030-05-01");
-    assert.deepEqual([x.monthTokens, x.monthCostMicros], [600, 1400]);
+    assert.deepEqual([x.totalTokens, x.totalCostMicros], [600, 1400]);
   });
 
   test("Postgres charges with one atomic upsert per call into a daily row", async () => {
@@ -592,7 +598,7 @@ describe("admin", () => {
     assert.equal((await post(cookie, { email: "x@example.com" })).status, 403);
     assert.equal((await admin.DELETE(req("DELETE", "/api/admin/users?email=x@example.com", { cookie }))).status, 403);
     assert.equal((await list(null)).status, 401);
-    assert.equal(await getStore().getUser("x@example.com", monthStart), null);
+    assert.equal(await getStore().getUser("x@example.com", usageSince), null);
   });
 
   test("lists people with month spend, tokens and budget, plus pending requests", async () => {
@@ -604,8 +610,8 @@ describe("admin", () => {
     assert.equal(res.status, 200);
     const data = await json(res);
     const friend = data.users.find((u) => u.email === "friend@example.com");
-    assert.equal(friend.monthUsd, 0.12);
-    assert.equal(friend.monthTokens, 1234);
+    assert.equal(friend.totalUsd, 0.12);
+    assert.equal(friend.totalTokens, 1234);
     assert.equal(friend.budgetUsd, 2);
     assert.equal(friend.status, "allowed");
     assert.ok("lastSeenAt" in friend);
@@ -621,19 +627,19 @@ describe("admin", () => {
 
     let data = await json(await post(cookie, { email: " New@Example.com " }));
     assert.deepEqual(data.requests, [], "approving clears the request");
-    let user = await getStore().getUser("new@example.com", monthStart);
-    assert.deepEqual([user.status, user.role, user.monthlyBudgetMicros], ["allowed", "user", null]);
+    let user = await getStore().getUser("new@example.com", usageSince);
+    assert.deepEqual([user.status, user.role, user.customBudgetMicros], ["allowed", "user", null]);
 
     await post(cookie, { email: "new@example.com", budgetUsd: 2.5 });
-    assert.equal((await getStore().getUser("new@example.com", monthStart)).monthlyBudgetMicros, 2_500_000);
+    assert.equal((await getStore().getUser("new@example.com", usageSince)).customBudgetMicros, 2_500_000);
     await post(cookie, { email: "new@example.com", budgetUsd: null });
-    assert.equal((await getStore().getUser("new@example.com", monthStart)).monthlyBudgetMicros, null, "back to the default");
+    assert.equal((await getStore().getUser("new@example.com", usageSince)).customBudgetMicros, null, "back to the default");
 
     const blocked = await admin.DELETE(req("DELETE", "/api/admin/users?email=new%40example.com", { cookie }));
     assert.equal(blocked.status, 200);
-    assert.equal((await getStore().getUser("new@example.com", monthStart)).status, "blocked");
+    assert.equal((await getStore().getUser("new@example.com", usageSince)).status, "blocked");
     await post(cookie, { email: "new@example.com", status: "allowed" });
-    assert.equal((await getStore().getUser("new@example.com", monthStart)).status, "allowed");
+    assert.equal((await getStore().getUser("new@example.com", usageSince)).status, "allowed");
 
     for (const body of [{ email: "nope" }, { email: "a@b.co", budgetUsd: -1 }, { email: "a@b.co", status: "maybe" }, { email: "a@b.co", role: "god" }]) {
       assert.equal((await post(cookie, body)).status, 400, JSON.stringify(body));

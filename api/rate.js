@@ -3,7 +3,7 @@ import { jevErrorResponse, missingKeyResponse } from "../lib/errors.js";
 import { authenticate, budgetResponse, charge } from "../lib/auth.js";
 import { chatHistory } from "../lib/chats.js";
 
-// POST { question, answer, history } -> { label, score, tokens, cost }.
+// POST { question, answer, history, memory? } -> { label, score, tokens, cost }.
 // With accounts on: { question, answer, chatId }, and the history comes from the saved chat.
 export function POST(request) {
   return handle(request);
@@ -29,13 +29,15 @@ export async function handle(request, { systemOne } = {}) {
   const noKey = missingKeyResponse();
   if (noKey) return noKey;
 
-  let history = body.history;
+  // With memory off, the answer is graded on the question alone, as it was written.
+  const memory = body.memory !== false;
+  let history = memory ? body.history : [];
   if (auth.user) {
     const overBudget = budgetResponse(auth.user);
     if (overBudget) return overBudget;
     const chat = await chatHistory(auth.user, body.chatId, { question, answer });
     if (chat.response) return chat.response;
-    history = chat.history;
+    history = memory ? chat.history : [];
   }
 
   let result;

@@ -1,4 +1,4 @@
-import { authDisabledResponse, authenticate, badRequest, budgetOf, defaultBudgetMicros, isAdmin, json, monthStart, readJson } from "../../lib/auth.js";
+import { authDisabledResponse, authenticate, badRequest, budgetOf, defaultBudgetMicros, isAdmin, json, usageSince, readJson } from "../../lib/auth.js";
 import { getStore } from "../../lib/store.js";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -6,13 +6,13 @@ const MAX_BUDGET_USD = 1000;
 
 async function listing() {
   const store = getStore();
-  const [users, requests] = await Promise.all([store.listUsers(monthStart()), store.listRequests()]);
+  const [users, requests] = await Promise.all([store.listUsers(usageSince()), store.listRequests()]);
   const usd = (micros) => (micros == null ? null : micros / 1e6);
   return {
     // budgetMicros is null for admins: no limit.
     users: users.map((u) => {
       const budgetMicros = budgetOf(u);
-      return { ...u, role: isAdmin(u) ? "admin" : u.role, budgetMicros, monthUsd: usd(u.monthCostMicros), budgetUsd: usd(budgetMicros) };
+      return { ...u, role: isAdmin(u) ? "admin" : u.role, budgetMicros, totalUsd: usd(u.totalCostMicros), budgetUsd: usd(budgetMicros) };
     }),
     requests,
     defaultBudgetMicros: defaultBudgetMicros(),
@@ -25,7 +25,7 @@ async function gate(request) {
   return auth;
 }
 
-// GET -> { users: [{ email, name, role, status, monthCostMicros, monthUsd, monthTokens, budgetMicros, budgetUsd, lastSeenAt, … }],
+// GET -> { users: [{ email, name, role, status, totalCostMicros, totalUsd, totalTokens, budgetMicros, budgetUsd, lastSeenAt, … }],
 //          requests: [{ email, name, requestedAt }], defaultBudgetMicros }
 export async function GET(request) {
   const { response } = await gate(request);
