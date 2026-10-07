@@ -47,6 +47,8 @@ browser (public/app.js)                    Vercel function (api/next.js)        
   request runs long.
 - **`api/next.js`**: validates input, calls Jev, and maps errors (rate limits, out of credits).
 - **`lib/jev.js`**: builds the questions and picks the character (details below).
+- **Accounts** (optional, see [Accounts](#accounts)): `lib/auth.js` (sign-in, sessions, budgets), `lib/store.js`
+  (Postgres or in-memory), `lib/chats.js`, and the handlers in `api/me.js`, `api/auth/`, `api/chats/`, `api/admin/`.
 - The API key lives only on the server. The browser never sees it.
 
 ### What Jev is asked, per character
@@ -97,8 +99,8 @@ Three suites, so the UI can be tested without spending Jev calls:
 
 | Command | What it tests | Calls Jev? |
 | --- | --- | --- |
-| `npm test` | Option rules, picking, runoffs, history, cost, dictionary, API validation, with a fake Jev | No |
-| `npm run test:ui` | The chat UI in headless Chromium; `/api/next` is spoofed in the browser | No |
+| `npm test` | Option rules, picking, runoffs, history, cost, dictionary, API validation, accounts (sessions, Google tokens, CSRF, budgets, chats, admin), with a fake Jev and an in-memory store | No |
+| `npm run test:ui` | The chat UI, accounts UI and admin page in headless Chromium; every `/api/*` route and Google's script are spoofed in the browser | No |
 | `npm run test:content` | Answer quality: a fixed question set (`lib/eval.js`) run 3 times each against real Jev, headless | Yes, about $0.07 a run |
 
 `test:ui` needs Chromium: `npx playwright install chromium`, or point `CHROMIUM_PATH` at an existing
@@ -140,9 +142,100 @@ Each character takes about two Jev requests (screening, then ranking; plus a sen
 and a runoff when letters tie), and each answer one more for its rating. Every request
 sends the question and the answer so far, so it's small: a whole answer costs a fraction of a cent at
 TypeSafe's list price ($0.042 per million input tokens; output is free). The header's cost meter shows
-the running total. The
-`/api/next` endpoint is public, so anyone with the link spends your credits. If that becomes a problem,
-add rate limiting to `/api/next`.
+the running total. Without accounts,
+`/api/next` is public, so anyone with the link spends your credits. Turn on [Accounts](#accounts) to
+limit it to people you allow, each with a monthly budget.
+
+## Accounts
+
+Optional Google sign-in, so only people you allow can use ChatJevPT, each with a monthly budget and up
+to 5 saved chats.
+
+### How it works
+
+- The page shows Google's **Sign in with Google** button. Google hands the browser an ID token, which it
+  posts to `POST /api/auth/google`. The server verifies it against Google's public keys (issuer, audience
+  = your client ID, expiry, verified email).
+- **Allowlist**: you get in if you're in the `users` table with status `allowed`, or listed in
+  `ADMIN_EMAILS` (added as an admin on first sign-in). Anyone else sees "You're not on the list yet" and
+  shows up under **Waiting for access** on the admin page, where one click lets them in.
+- The server then sets its own session cookie (`__Host-session`, HttpOnly, Secure, SameSite=Lax, 7 days,
+  signed with `SESSION_SECRET`). On `http://localhost` it's called `session` and isn't Secure.
+- Every Jev call checks the person's budget first and charges the actual tokens and cost afterwards.
+  When the month's budget is used, they see "Monthly budget used" until the 1st (UTC).
+- **Admins have no budget limit.** Everyone with role admin, including everyone in `ADMIN_EMAILS`, is
+  never blocked; their usage is still recorded and shown ("Usage: $X this month · no limit").
+- **Saved chats**: signed-in people get a sidebar with up to 5 chats (50 questions each). The server
+  keeps the history: requests send a `chatId` and the server uses that chat's last 6 turns, ignoring any
+  history from the browser.
+- Writes (POST/PUT/DELETE) must come from the page itself: same `Origin` and a JSON content type,
+  otherwise 403.
+- `/admin.html` (admins only): everyone's spend this month, tokens, budget and last sign-in; edit
+  budgets inline, block or unblock, approve requests, add people.
+
+### Three modes
+
+| `GOOGLE_CLIENT_ID`, `SESSION_SECRET`, `DATABASE_URL` | Behavior |
+| --- | --- |
+| **None** set | Accounts are off. The app works exactly as before (open demo); `/api/me` says `{authEnabled:false}`. |
+| **All** set | Sign-in is required for everything. |
+| **Some** set | Fails closed: Jev, chat and admin endpoints return 500 "Sign-in is half set up: missing X, Y." |
+
+`STORE=memory` counts as a database (local dev and tests only: it forgets everything on restart).
+
+### Data model
+
+Neon Postgres; tables are created on first use (`CREATE TABLE IF NOT EXISTS`), no migrations to run.
+
+- `users`: email (key), Google profile, `role` (`user`/`admin`), `status` (`allowed`/`blocked`),
+  `monthly_budget_micros` (null = `DEFAULT_MONTHLY_BUDGET_USD`), created and last-seen times.
+- `usage`: one row per person per UTC day (tokens, cost in micro-dollars, calls); the month is a sum.
+  Charges are a single atomic upsert, so parallel requests can't lose usage.
+- `chats`: id, owner, title, `turns` as JSON (question, answer, rating, tokens, cost).
+- `access_requests`: who asked to get in, and when.
+
+The budget check runs before each call, so a few parallel requests can overshoot it by a fraction of a
+cent.
+
+### Owner setup checklist
+
+1. **Google Cloud Console** (<https://console.cloud.google.com>):
+   1. Create a project.
+   2. **Google Auth Platform → Get started**: app name, support email, audience **External**.
+   3. **Clients → Create client → Web application**.
+   4. **Authorized JavaScript origins**: `https://chatjevpt.vercel.app`, `http://localhost`,
+      `http://localhost:3000`. No redirect URIs and no client secret are needed.
+   5. Copy the client ID (`….apps.googleusercontent.com`).
+2. **Vercel → Storage → Create Database → Neon → Free**, then connect it to the chatjevpt project for
+   all environments. This sets `DATABASE_URL`.
+3. **Vercel → Settings → Environment Variables**:
+   - `GOOGLE_CLIENT_ID`: the client ID from step 1.
+   - `SESSION_SECRET`: the output of `openssl rand -base64 32`. Use different values for Production and
+     Preview.
+   - `ADMIN_EMAILS`: your Google email (comma-separate several).
+   - Optionally `DEFAULT_MONTHLY_BUDGET_USD` (defaults to `1.00`).
+4. Redeploy.
+5. Sign in, then open `/admin.html` to add people or approve requests.
+
+Preview deployments have their own URLs; add one to the authorized origins if you want to sign in there.
+
+### Local dev with accounts
+
+```sh
+npm run dev:accounts   # STORE=memory, DEV_LOGIN_EMAIL=dev@example.com, fake Jev
+```
+
+The sign-in card gets a "Sign in as the local dev user" button (`POST /api/auth/dev`), which signs in
+`DEV_LOGIN_EMAIL` as an admin. Off Vercel, `DEV_LOGIN_EMAIL` stands in for `GOOGLE_CLIENT_ID`; dev login
+is refused whenever `VERCEL` is set, so it can never work on a deployment. To try real Google sign-in
+locally, set `GOOGLE_CLIENT_ID` as well and open `http://localhost:3000`.
+
+### Vercel Hobby limits
+
+Hobby includes about 1M function invocations a month. Each character is still one invocation of
+`/api/next` (it makes about two Jev requests inside), and each answer one more for its rating, so a
+full 200-character answer is roughly 200 invocations: about **5,000 answers a month**, fewer with the
+chat and account requests around them. Jev's cost per answer stays a fraction of a cent.
 
 ## Configuration
 
@@ -152,6 +245,13 @@ add rate limiting to `/api/next`.
 | `TYPESAFE_DEFAULT_MODEL` | No | Model override (defaults to `jev-latest`) |
 | `JEV_PRICE_PER_MTOK` | No | Price per million tokens for the cost meter (defaults to `0.042`) |
 | `JEV_MOCK` | No | Set to `1` to use the fake Jev (local dev only) |
+| `GOOGLE_CLIENT_ID` | Accounts | OAuth web client ID from Google Cloud |
+| `SESSION_SECRET` | Accounts | Signs session cookies; `openssl rand -base64 32`, different per environment |
+| `DATABASE_URL` | Accounts | Neon Postgres connection string (set by the Vercel–Neon integration) |
+| `ADMIN_EMAILS` | No | Comma-separated Google emails that are admins (no budget limit) |
+| `DEFAULT_MONTHLY_BUDGET_USD` | No | Monthly budget for people without their own (defaults to `1.00`) |
+| `STORE` | No | `memory` for an in-memory store (local dev and tests only) |
+| `DEV_LOGIN_EMAIL` | No | Local dev only: enables `POST /api/auth/dev` for this email; ignored on Vercel |
 
 ## Working on this with Claude Code
 

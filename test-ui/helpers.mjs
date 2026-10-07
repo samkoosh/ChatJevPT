@@ -1,6 +1,6 @@
 // Shared plumbing for the browser UI tests: a dev.mjs child process for static
-// files, a Chromium instance, and a scripted fake for POST /api/next so the
-// tests never reach Jev.
+// files, a Chromium instance, and scripted fakes for every /api/* route so the
+// tests never reach Jev or the accounts backend.
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
@@ -61,9 +61,11 @@ export function launchBrowser() {
   return chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 }
 
-// Opens a fresh context + page. Any /api/next request that no test route
+// Opens a fresh context + page. Any /api/* request that no test route
 // handled is recorded in `leaks`; call assertNoLeaks() at the end of a test.
-export async function openPage(browser, baseURL, { device } = {}) {
+//   setup: async (page) => {}  routes to add before the page loads
+//   path:  the page to open (default "/")
+export async function openPage(browser, baseURL, { device, setup, path = "/" } = {}) {
   let options = { baseURL };
   if (device) {
     const { defaultBrowserType, ...descriptor } = devices[device];
@@ -76,14 +78,22 @@ export async function openPage(browser, baseURL, { device } = {}) {
 
   // Fonts are cosmetic and external; keep the tests offline and fast.
   await context.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.abort());
+  // Google's sign-in script is replaced by a tiny stub (see GIS_STUB).
+  await context.route(/accounts\.google\.com/, (route) =>
+    route.request().url().startsWith(GIS_URL)
+      ? route.fulfill({ status: 200, contentType: "text/javascript", body: GIS_STUB })
+      : route.abort(),
+  );
   // Context routes run after page routes, so this only fires when a test
-  // forgot to route /api/next. Abort so nothing reaches the server.
-  await context.route("**/api/next", (route) => {
+  // didn't route that /api/* path. Accounts are off and ratings are free and
+  // "Good" by default; anything else is a leak, aborted so nothing reaches the server.
+  await context.route(/\/api\//, (route) => {
+    const { pathname } = new URL(route.request().url());
+    if (pathname === "/api/me") return fulfill(route, 200, { authEnabled: false });
+    if (pathname === "/api/rate") return fulfill(route, 200, DEFAULT_RATING);
     leaks.push(`unrouted ${route.request().method()} ${route.request().url()}`);
     return route.abort();
   });
-  // Ratings are spoofed by default (free, "Good"); tests about ratings route their own.
-  await context.route("**/api/rate", (route) => fulfill(route, 200, DEFAULT_RATING));
   // Belt and braces: every /api/* response must come from a fake.
   context.on("response", (response) => {
     const path = new URL(response.url()).pathname;
@@ -93,13 +103,15 @@ export async function openPage(browser, baseURL, { device } = {}) {
   });
 
   const page = await context.newPage();
-  await page.goto("/");
+  page.on("dialog", (dialog) => (page.confirmAnswer ?? true ? dialog.accept() : dialog.dismiss()));
+  if (setup) await setup(page);
+  await page.goto(path);
   return {
     context,
     page,
     leaks,
     assertNoLeaks() {
-      if (leaks.length) throw new Error(`/api/next reached the server:\n${leaks.join("\n")}`);
+      if (leaks.length) throw new Error(`/api/* reached the server:\n${leaks.join("\n")}`);
     },
   };
 }
@@ -120,7 +132,7 @@ function topFor(pick) {
   ];
 }
 
-function fulfill(route, status, body) {
+export function fulfill(route, status, body) {
   return route.fulfill({
     status,
     contentType: "application/json",
@@ -206,4 +218,91 @@ export function deferred() {
   let resolve;
   const promise = new Promise((r) => (resolve = r));
   return { promise, resolve };
+}
+
+// Google Identity Services stand-in: initialize() keeps the callback, renderButton()
+// draws a button that "signs in" with a fixed credential. Calls are logged on window.gisCalls.
+export const GIS_URL = "https://accounts.google.com/gsi/client";
+export const FAKE_CREDENTIAL = "fake.google.id-token";
+const GIS_STUB = `
+window.gisCalls = [];
+window.google = { accounts: { id: {
+  initialize(config) { window.gisCalls.push(["initialize", { client_id: config.client_id }]); window.gisCallback = config.callback; },
+  renderButton(target, options) {
+    window.gisCalls.push(["renderButton", options]);
+    const b = document.createElement("button");
+    b.className = "fake-gsi";
+    b.textContent = "Sign in with Google";
+    b.onclick = () => window.gisCallback({ credential: ${JSON.stringify(FAKE_CREDENTIAL)} });
+    target.append(b);
+  },
+  disableAutoSelect() { window.gisCalls.push(["disableAutoSelect"]); },
+} } };
+`;
+
+export const USER = { email: "friend@example.com", name: "Friend", picture: null, role: "user" };
+export const ADMIN = { email: "owner@example.com", name: "Owner", picture: null, role: "admin" };
+
+// A fake accounts backend: /api/me, /api/auth/*, /api/logout and /api/chats[/id], kept in
+// memory per page. Every request is logged in `log` as "METHOD /path" with its body.
+//   user:   the signed-in user, or null for signed out
+//   usage:  { monthCostMicros, monthTokens, budgetMicros }
+//   chats:  [{ id, title, updatedAt, turns }]
+//   signIn: response for POST /api/auth/google: { status, body }
+export function fakeAccounts({ user = USER, usage, chats = [], signIn, googleClientId = "test-client" } = {}) {
+  const state = {
+    user,
+    usage: usage ?? { monthCostMicros: 120_000, monthTokens: 3400, budgetMicros: user?.role === "admin" ? null : 1_000_000 },
+    chats: chats.map((c) => ({ turns: [], ...c })),
+  };
+  const log = [];
+  let nextId = 1;
+  const meBody = () =>
+    state.user ? { authEnabled: true, user: state.user, usage: state.usage } : { authEnabled: true, googleClientId };
+  const summary = (c) => ({ id: c.id, title: c.title, turnCount: c.turns.length, updatedAt: c.updatedAt });
+
+  async function install(page) {
+    await page.route(/\/api\/(me|auth\/google|logout|chats)(\/|$|\?)/, (route) => {
+      const request = route.request();
+      const { pathname } = new URL(request.url());
+      const method = request.method();
+      const body = request.postData() ? request.postDataJSON() : undefined;
+      log.push({ call: `${method} ${pathname}`, body, headers: request.headers() });
+      if (pathname === "/api/me") return fulfill(route, 200, meBody());
+      if (pathname === "/api/auth/google") {
+        if (signIn) return fulfill(route, signIn.status, signIn.body);
+        state.user = USER;
+        return fulfill(route, 200, meBody());
+      }
+      if (pathname === "/api/logout") {
+        state.user = null;
+        return fulfill(route, 200, { ok: true });
+      }
+      if (pathname === "/api/chats" && method === "GET") return fulfill(route, 200, { chats: state.chats.map(summary) });
+      if (pathname === "/api/chats" && method === "POST") {
+        if (state.chats.length >= 5) return fulfill(route, 409, { error: "You can keep up to 5 chats. Delete one to start another.", code: "chat_limit" });
+        const chat = { id: `new-${nextId++}`, title: "", updatedAt: new Date().toISOString(), turns: [] };
+        state.chats.unshift(chat);
+        return fulfill(route, 201, { chat: summary(chat) });
+      }
+      const id = pathname.split("/").pop();
+      const chat = state.chats.find((c) => c.id === id);
+      if (!chat) return fulfill(route, 404, { error: "Chat not found.", code: "not_found" });
+      if (method === "GET") return fulfill(route, 200, { chat });
+      if (method === "DELETE") {
+        state.chats = state.chats.filter((c) => c !== chat);
+        return fulfill(route, 200, { ok: true });
+      }
+      if (body.turn) {
+        chat.turns.push({ ...body.turn });
+        if (!chat.title) chat.title = body.turn.question.slice(0, 60);
+      } else if (body.lastTurnRating) {
+        const { index = chat.turns.length - 1, ...rating } = body.lastTurnRating;
+        Object.assign(chat.turns[index], rating);
+      }
+      chat.updatedAt = new Date().toISOString();
+      return fulfill(route, 200, { chat: summary(chat) });
+    });
+  }
+  return { install, log, state, calls: () => log.map((l) => l.call) };
 }

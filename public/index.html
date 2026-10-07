@@ -16,7 +16,28 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <aside class="sidebar" id="sidebar" aria-label="Saved chats" hidden>
+      <div class="sidebar-head">
+        <span class="sidebar-title">Chats</span>
+        <span class="chat-count" id="chat-count"></span>
+        <button class="icon-btn" id="sidebar-close" title="Hide chats" aria-label="Hide chats">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+      </div>
+      <span class="sidebar-new-wrap" id="sidebar-new-wrap">
+        <button class="sidebar-new" id="sidebar-new">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New chat
+        </button>
+      </span>
+      <ul class="chat-list" id="chat-list"></ul>
+      <p class="sidebar-note">Your last 5 chats are saved to your account.</p>
+    </aside>
+    <div class="sidebar-scrim" id="sidebar-scrim" hidden></div>
+
     <header class="topbar">
+      <button class="icon-btn sidebar-toggle" id="sidebar-toggle" title="Chats" aria-label="Chats" aria-controls="sidebar" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+      </button>
       <button class="brand" id="new-chat" title="New chat">
         <svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><use href="#spark" /></svg>
         <span>ChatJevPT</span>
@@ -26,12 +47,33 @@
       <button class="icon-btn" id="new-chat-2" title="New chat" aria-label="New chat">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
       </button>
+      <div class="account" id="account" hidden>
+        <button class="account-avatar" id="account-btn" aria-label="Account" aria-haspopup="true" aria-expanded="false"></button>
+        <div class="account-menu" id="account-menu" hidden>
+          <div class="account-name" id="account-name"></div>
+          <div class="account-email" id="account-email"></div>
+          <div class="account-usage">
+            <div class="usage-text" id="usage-text"></div>
+            <div class="usage-bar" id="usage-bar"><i id="usage-fill"></i></div>
+          </div>
+          <a class="account-menu-item" id="admin-link" href="/admin.html" hidden>Admin</a>
+          <button class="account-menu-item" id="sign-out">Sign out</button>
+        </div>
+      </div>
     </header>
 
     <main id="main" class="empty">
       <section class="hero" id="hero">
         <svg class="spark hero-spark" viewBox="0 0 24 24" aria-hidden="true"><use href="#spark" /></svg>
         <h1 id="greeting">What should Jev spell out?</h1>
+      </section>
+
+      <section class="signin-card" id="signin" hidden>
+        <h2>Sign in to ChatJevPT</h2>
+        <p>ChatJevPT is invite-only. Sign in with Google to start asking Jev.</p>
+        <div class="signin-google" id="gsi-button"></div>
+        <button class="signin-dev" id="dev-login" hidden>Sign in as the local dev user</button>
+        <div class="signin-message" id="signin-message" hidden></div>
       </section>
 
       <div class="thread" id="thread" aria-live="polite"></div>
