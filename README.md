@@ -136,7 +136,8 @@ npm run dev:mock
 
 ## Cost
 
-Each answer is up to 200 Jev calls, one per character (plus a runoff call when letters tie). Every call
+Each character takes about two Jev requests (screening, then ranking; plus a sense check after each word
+and a runoff when letters tie), and each answer one more for its rating. Every request
 sends the question and the answer so far, so it's small: a whole answer costs a fraction of a cent at
 TypeSafe's list price ($0.042 per million input tokens; output is free). The header's cost meter shows
 the running total. The
