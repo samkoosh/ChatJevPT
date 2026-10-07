@@ -31,7 +31,10 @@ test("Rock: one Choice over every character, with only the question and the answ
   const labels = Object.keys(criteria);
   for (const o of ["A", "Z", "0", "9", " ", "NEWLINE", ".", "?", "'", "-"]) assert.ok(labels.includes(o), JSON.stringify(o));
   assert.ok(!labels.includes("SPACE"), "a space is labelled with a space");
-  assert.equal(criteria.A, null, "real characters need no description");
+  for (const [label, description] of Object.entries(criteria)) assert.ok(description, `${JSON.stringify(label)} is described`);
+  assert.equal(criteria.A, "The letter A.");
+  assert.equal(criteria["7"], "The digit 7.");
+  assert.equal(criteria["?"], "A question mark.");
   assert.equal(criteria[" "], "A space between words (as though the keyboard's space bar was pressed).");
   assert.equal(criteria.NEWLINE, "A line break (as though the keyboard's Return key was pressed).");
   assert.ok(!labels.includes(END), "can't end before writing anything");
