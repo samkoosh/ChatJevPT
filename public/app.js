@@ -17,11 +17,25 @@ const costMeter = document.getElementById("cost-meter");
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }));
 // Accounts, only when the server has them turned on (see /api/me). Signed in, chats are saved
 // and the server reads a chat's history itself, so requests carry its id instead.
-const MAX_CHATS = 5;
 let me = { authEnabled: false };
 let chats = []; // the signed-in person's saved chats, newest first
 let activeChatId = null; // saved chat on screen; null = a new chat, saved on its first question
 const signedIn = () => Boolean(me.user);
+
+// Admins can preview the page as a regular person sees it (admin extras hidden, regular limits
+// shown). It's only a view: the server still treats them as an admin.
+let previewing = false;
+try {
+  previewing = sessionStorage.getItem("jev-preview") === "1";
+} catch {}
+const realAdmin = () => me.user?.role === "admin";
+const showAdmin = () => realAdmin() && !previewing;
+// The chat limit to show; null means no limit (so no `??` here: null is a real answer).
+function chatLimit() {
+  if (previewing && me.regular) return me.regular.chats;
+  return me.limits && "chats" in me.limits ? me.limits.chats : 5;
+}
+const shownBudget = () => (previewing && me.regular ? me.regular.budgetMicros : me.usage?.budgetMicros);
 
 const formatCost = (cost) => (cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`);
 const formatTokens = (n) => (n < 1000 ? `${n}` : `${(n / 1000).toFixed(n < 10000 ? 1 : 0)}k`);
@@ -153,7 +167,7 @@ const labText = document.getElementById("rock-lab-text");
 const labStatus = document.getElementById("rock-lab-status");
 const lab = { saved: null, fallback: null, loading: null };
 
-const isAdminUser = () => me.user?.role === "admin";
+const isAdminUser = () => showAdmin();
 // The draft to send, or null when it's the same as what's saved (or there's no lab).
 function labDraft() {
   if (!isAdminUser() || lab.saved == null) return null;
@@ -547,7 +561,6 @@ const accountMenu = document.getElementById("account-menu");
 const accountBtn = document.getElementById("account-btn");
 const narrow = window.matchMedia("(max-width: 760px)");
 const GSI_SRC = "https://accounts.google.com/gsi/client";
-const LIMIT_TITLE = `You can keep up to ${MAX_CHATS} chats. Delete one to start another.`;
 const ENDED = "Your session ended. Sign in again.";
 
 const formatUsd = (micros) => (micros > 0 && micros < 10000 ? formatCost(micros / 1e6) : `$${(micros / 1e6).toFixed(2)}`);
@@ -585,16 +598,36 @@ function applyAccount() {
   accountBtn.title = email;
   document.getElementById("account-name").textContent = name || "";
   document.getElementById("account-email").textContent = email;
-  document.getElementById("admin-link").hidden = role !== "admin";
-  labToggle.hidden = role !== "admin";
+  if (role !== "admin") previewing = false;
+  document.getElementById("admin-link").hidden = !showAdmin();
+  document.getElementById("preview-toggle").hidden = role !== "admin";
+  document.getElementById("preview-toggle").textContent = previewing ? "Exit non-admin preview" : "Preview as non-admin";
+  document.getElementById("preview-banner").hidden = !previewing;
+  page.classList.toggle("previewing", previewing);
+  labToggle.hidden = !showAdmin();
+  if (!showAdmin()) setLabOpen(false);
   if (role === "admin") loadLab();
   renderUsage();
+  renderChats();
 }
+
+function setPreview(on) {
+  previewing = on;
+  try {
+    if (on) sessionStorage.setItem("jev-preview", "1");
+    else sessionStorage.removeItem("jev-preview");
+  } catch {}
+  closeMenu();
+  applyAccount();
+}
+document.getElementById("preview-toggle").addEventListener("click", () => setPreview(!previewing));
+document.getElementById("preview-exit").addEventListener("click", () => setPreview(false));
 
 // Admins have no budget (budgetMicros null): just their total spend, no bar.
 function renderUsage() {
   if (!me.usage) return;
-  const { totalCostMicros, budgetMicros } = me.usage;
+  const { totalCostMicros } = me.usage;
+  const budgetMicros = shownBudget();
   const unlimited = budgetMicros == null;
   document.getElementById("usage-text").textContent = unlimited
     ? `Usage: ${formatUsd(totalCostMicros)} total · no limit`
@@ -743,10 +776,13 @@ function renderChats() {
     chatList.append(item);
   }
   if (!chats.length) chatList.append(el("li", "chat-empty", "No saved chats yet. Ask something to start one."));
-  document.getElementById("chat-count").textContent = `${chats.length}/${MAX_CHATS}`;
-  const full = chats.length >= MAX_CHATS;
+  const limit = chatLimit();
+  document.getElementById("chat-count").textContent = limit == null ? `${chats.length}` : `${chats.length}/${limit}`;
+  document.getElementById("sidebar-note").textContent =
+    limit == null ? "Admins can keep as many chats as they like." : `Your last ${limit} chats are saved to your account.`;
+  const full = limit != null && chats.length >= limit;
   sidebarNew.disabled = full;
-  document.getElementById("sidebar-new-wrap").title = full ? LIMIT_TITLE : "";
+  document.getElementById("sidebar-new-wrap").title = full ? `You can keep up to ${limit} chats. Delete one to start another.` : "";
 }
 
 function upsertChat(summary) {

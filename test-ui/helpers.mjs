@@ -253,7 +253,8 @@ export const ADMIN = { email: "owner@example.com", name: "Owner", picture: null,
 //   usage:  { totalCostMicros, totalTokens, budgetMicros }
 //   chats:  [{ id, title, updatedAt, turns }]
 //   signIn: response for POST /api/auth/google: { status, body }
-export function fakeAccounts({ user = USER, usage, chats = [], signIn, googleClientId = "test-client" } = {}) {
+// `me` adds fields to the signed-in /api/me body (e.g. limits, regular).
+export function fakeAccounts({ user = USER, usage, chats = [], signIn, googleClientId = "test-client", me = {} } = {}) {
   const state = {
     user,
     usage: usage ?? { totalCostMicros: 120_000, totalTokens: 3400, budgetMicros: user?.role === "admin" ? null : 1_000_000 },
@@ -262,7 +263,7 @@ export function fakeAccounts({ user = USER, usage, chats = [], signIn, googleCli
   const log = [];
   let nextId = 1;
   const meBody = () =>
-    state.user ? { authEnabled: true, user: state.user, usage: state.usage } : { authEnabled: true, googleClientId };
+    state.user ? { authEnabled: true, user: state.user, usage: state.usage, ...me } : { authEnabled: true, googleClientId };
   const summary = (c) => ({ id: c.id, title: c.title, turnCount: c.turns.length, updatedAt: c.updatedAt });
 
   async function install(page) {
