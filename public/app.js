@@ -1,4 +1,4 @@
-const MAX_LENGTH = 140;
+const MAX_LENGTH = 200;
 
 const main = document.getElementById("main");
 const thread = document.getElementById("thread");
@@ -8,6 +8,7 @@ const send = document.getElementById("send");
 const tooltip = document.getElementById("tooltip");
 
 let controller = null; // AbortController for the answer being written
+let history = []; // finished turns in this chat, sent so Jev can follow up
 
 // On touch devices, Enter inserts a newline and we don't refocus the input,
 // which would pop the keyboard over the answer.
@@ -43,11 +44,11 @@ function scrollToBottom() {
   if (nearBottom) window.scrollTo({ top: document.body.scrollHeight });
 }
 
-async function fetchNext(question, answer, signal) {
+async function fetchNext(question, answer, priorTurns, signal) {
   const res = await fetch("/api/next", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ question, answer }),
+    body: JSON.stringify({ question, answer, history: priorTurns }),
     signal,
   });
   const data = await res.json().catch(() => ({}));
@@ -112,6 +113,7 @@ async function ask(question) {
   controller = new AbortController();
   setBusy(true);
   const started = performance.now();
+  const priorTurns = history.slice(-6);
   let answer = "";
   let calls = 0;
   const text = () => answer.trim();
@@ -119,7 +121,7 @@ async function ask(question) {
 
   try {
     while (answer.length < MAX_LENGTH) {
-      const { pick, char, top, tied, coinFlip } = await fetchNext(question, answer, controller.signal);
+      const { pick, char, top, tied, coinFlip } = await fetchNext(question, answer, priorTurns, controller.signal);
       calls++;
       thinking.remove();
       if (pick === "END") break;
@@ -145,6 +147,7 @@ async function ask(question) {
     caret.remove();
     msg.classList.remove("typing");
     if (!answer) answerEl.remove();
+    else history.push({ question, answer: answer.trim() });
     renderMeta(meta, stats(true));
     controller = null;
     setBusy(false);
@@ -183,6 +186,7 @@ document.getElementById("suggestions").addEventListener("click", (event) => {
 function newChat() {
   controller?.abort();
   thread.innerHTML = "";
+  history = [];
   main.classList.add("empty");
   refocus();
 }

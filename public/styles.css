@@ -208,6 +208,7 @@ main.empty .thread {
 }
 
 .answer {
+  white-space: pre-wrap;
   font-family: var(--serif);
   font-size: 18px;
   line-height: 1.65;
