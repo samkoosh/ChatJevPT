@@ -84,3 +84,17 @@ test("answers the server accepts", () => {
   assert.ok(!ANSWER_PATTERN.test('He said "hi"'));
   assert.ok(!ANSWER_PATTERN.test("<script>"));
 });
+
+test("no stutters: a character three times or a short pattern three times", () => {
+  assert.ok(!allowedOptions("Yess").includes("S"), "sss");
+  assert.ok(allowedOptions("Les").includes("S"), "two in a row is fine");
+  assert.ok(!allowedOptions("Seses").includes("E"), "sesese");
+  assert.ok(!allowedOptions("Endndn").includes("D"), "ndndnd");
+  assert.ok(!allowedOptions("Abcabcab").includes("C"), "abcabcabc");
+});
+
+test("a runaway word has to end at 18 letters", () => {
+  const long = "Supercalifragilist"; // 18 letters
+  assert.ok(!allowedOptions(long).some((o) => /^[A-Z]$/.test(o)));
+  assert.ok(allowedOptions(long).includes("SPACE"));
+});
