@@ -94,44 +94,45 @@
       <div class="thread" id="thread" aria-live="polite"></div>
 
       <div class="composer-wrap">
-        <section class="rock-lab" id="rock-lab" aria-label="Rock lab" hidden>
-          <div class="rock-lab-head">
-            <strong>Rock lab</strong>
-            <span class="rock-lab-state" id="rock-lab-state"></span>
-            <button type="button" class="icon-btn" id="rock-lab-close" aria-label="Close Rock lab">
+        <section class="doornail-lab" id="doornail-lab" aria-label="Doornail lab" hidden>
+          <div class="doornail-lab-head">
+            <strong>Doornail lab</strong>
+            <span class="doornail-lab-state" id="doornail-lab-state"></span>
+            <button type="button" class="icon-btn" id="doornail-lab-close" aria-label="Close Doornail lab">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
-          <p class="rock-lab-help">
-            Rock's instructions for each character. Your edits apply right away to <em>your</em> Rock answers; Save makes
+          <p class="doornail-lab-help">
+            Doornail's instructions for each character. Your edits apply right away to <em>your</em> Doornail answers; Save makes
             them everyone's.
           </p>
-          <textarea id="rock-lab-text" rows="4" maxlength="4000" spellcheck="false" aria-label="Rock instructions"></textarea>
-          <div class="rock-lab-request" id="rock-lab-request" hidden>
-            <pre id="rock-lab-request-json" tabindex="0" aria-label="The questions part of each Rock request"></pre>
-            <p>The <code>questions</code> part of every Rock request, with your current text. <code>END</code> is only offered once the answer has something in it.</p>
+          <textarea id="doornail-lab-text" rows="4" maxlength="4000" spellcheck="false" aria-label="Doornail instructions"></textarea>
+          <div class="doornail-lab-request" id="doornail-lab-request" hidden>
+            <pre id="doornail-lab-request-json" tabindex="0" aria-label="The questions part of each Doornail request"></pre>
+            <p>The <code>questions</code> part of every Doornail request, with your current text. <code>END</code> is only offered once the answer has something in it.</p>
           </div>
-          <div class="rock-lab-actions">
-            <button type="button" class="btn" id="rock-lab-view" aria-pressed="false">Show full request</button>
-            <button type="button" class="btn primary" id="rock-lab-save">Save for everyone</button>
-            <button type="button" class="btn" id="rock-lab-revert">Discard my edits</button>
-            <button type="button" class="btn" id="rock-lab-reset">Reset to default</button>
+          <div class="doornail-lab-actions">
+            <button type="button" class="btn" id="doornail-lab-view" aria-pressed="false">Show full request</button>
+            <button type="button" class="btn primary" id="doornail-lab-save">Save for everyone</button>
+            <button type="button" class="btn" id="doornail-lab-revert">Discard my edits</button>
+            <button type="button" class="btn" id="doornail-lab-reset">Reset to default</button>
           </div>
-          <p class="rock-lab-status" id="rock-lab-status" role="status" aria-live="polite"></p>
+          <p class="doornail-lab-status" id="doornail-lab-status" role="status" aria-live="polite"></p>
         </section>
         <form class="composer" id="composer">
           <textarea id="input" rows="1" placeholder="Ask Jev anything…" maxlength="2000" autofocus></textarea>
           <div class="composer-row">
             <div class="composer-controls">
               <div class="levels" role="radiogroup" aria-label="Model level: dumb as a…">
-                <button type="button" class="level-option" role="radio" data-level="rock" title="Dumb as a rock: one plain guess per letter">Rock</button>
+                <button type="button" class="level-option" role="radio" data-level="doornail" title="Dumb as a doornail: one plain guess per letter">Doornail</button>
+                <button type="button" class="level-option" role="radio" data-level="rock" title="Dumb as a rock: one guess per letter, seeing each option as the answer it would make">Rock</button>
                 <button type="button" class="level-option" role="radio" data-level="stump" title="Dumb as a stump: screening, real words, sense checks">Stump</button>
                 <button type="button" class="level-option" role="radio" data-level="post" title="Dumb as a post: picks the kind of character first, then Stump's checks">Post</button>
               </div>
               <button type="button" class="memory-toggle" id="memory-toggle" aria-pressed="true">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></svg>Memory
               </button>
-              <button type="button" class="lab-toggle" id="rock-lab-toggle" aria-expanded="false" aria-controls="rock-lab" title="Rock lab: edit Rock's instructions" hidden>
+              <button type="button" class="lab-toggle" id="doornail-lab-toggle" aria-expanded="false" aria-controls="doornail-lab" title="Doornail lab: edit Doornail's instructions" hidden>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3" /><path d="M7.5 15h9" /></svg>Lab
               </button>
             </div>

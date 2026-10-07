@@ -86,13 +86,13 @@ export async function openPage(browser, baseURL, { device, setup, path = "/" } =
   );
   // Context routes run after page routes, so this only fires when a test
   // didn't route that /api/* path. Accounts are off, ratings are free and "Good",
-  // and Rock's instructions are the default (an admin page loads them for the Rock lab);
+  // and Doornail's instructions are the default (an admin page loads them for the Doornail lab);
   // anything else is a leak, aborted so nothing reaches the server.
   await context.route(/\/api\//, (route) => {
     const { pathname } = new URL(route.request().url());
     if (pathname === "/api/me") return fulfill(route, 200, { authEnabled: false });
     if (pathname === "/api/rate") return fulfill(route, 200, DEFAULT_RATING);
-    if (pathname === "/api/admin/rock" && route.request().method() === "GET") return fulfill(route, 200, DEFAULT_ROCK);
+    if (pathname === "/api/admin/doornail" && route.request().method() === "GET") return fulfill(route, 200, DEFAULT_DOORNAIL);
     leaks.push(`unrouted ${route.request().method()} ${route.request().url()}`);
     return route.abort();
   });
@@ -123,10 +123,10 @@ const ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("");
 
 export const TOKENS_PER_CALL = 100;
 export const DEFAULT_RATING = { label: "Good", score: 3.1, tokens: 0, cost: 0 };
-export const ROCK_DEFAULT = "Which character should come next in `answer_so_far` to answer `question`?";
-export const ROCK_CRITERIA = { A: "The letter A.", B: "The letter B.", space: "A space between words (as though the keyboard's space bar was pressed).", END: "The end of the answer." };
-export const rockQuestionsFor = (instructions) => ({ next: { type: "choice", instructions, criteria: ROCK_CRITERIA } });
-export const DEFAULT_ROCK = { instructions: ROCK_DEFAULT, default: ROCK_DEFAULT, isDefault: true, questions: rockQuestionsFor(ROCK_DEFAULT) };
+export const DOORNAIL_DEFAULT = "Which character should come next in `answer_so_far` to answer `question`?";
+export const DOORNAIL_CRITERIA = { A: "The letter A.", B: "The letter B.", space: "A space between words (as though the keyboard's space bar was pressed).", END: "The end of the answer." };
+export const doornailQuestionsFor = (instructions) => ({ next: { type: "choice", instructions, criteria: DOORNAIL_CRITERIA } });
+export const DEFAULT_DOORNAIL = { instructions: DOORNAIL_DEFAULT, default: DOORNAIL_DEFAULT, isDefault: true, questions: doornailQuestionsFor(DOORNAIL_DEFAULT) };
 export const COST_PER_CALL = 0.0001;
 
 function topFor(pick) {

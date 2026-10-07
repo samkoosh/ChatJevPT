@@ -58,12 +58,12 @@ test("regular people still see 5 max", async () => {
 test("preview as non-admin hides admin tools and shows regular limits, then exits", async () => {
   const { page } = await open();
   await page.waitForFunction(() => document.getElementById("chat-count").textContent === "6", null, T);
-  assert.ok(await page.locator("#rock-lab-toggle").isVisible());
+  assert.ok(await page.locator("#doornail-lab-toggle").isVisible());
 
   await openMenu(page);
   await page.click("#preview-toggle");
   await page.locator("#preview-banner").waitFor({ state: "visible", ...T });
-  assert.ok(await page.locator("#rock-lab-toggle").isHidden(), "Lab hidden");
+  assert.ok(await page.locator("#doornail-lab-toggle").isHidden(), "Lab hidden");
   assert.equal(await page.locator("#chat-count").textContent(), "6/5");
   assert.ok(await page.locator("#sidebar-new").isDisabled(), "New chat greyed out at the regular limit");
   await openMenu(page);
@@ -72,23 +72,23 @@ test("preview as non-admin hides admin tools and shows regular limits, then exit
   assert.ok(await page.locator("#usage-bar").isVisible());
   assert.equal(await page.locator("#preview-toggle").textContent(), "Exit non-admin preview");
 
-  // Rock answers don't carry a lab draft while previewing.
-  await page.evaluate(() => localStorage.setItem("jev-rock-draft", "My draft."));
+  // Doornail answers don't carry a lab draft while previewing.
+  await page.evaluate(() => localStorage.setItem("jev-doornail-draft", "My draft."));
   await page.keyboard.press("Escape");
-  await page.locator('.level-option[data-level="rock"]').click();
+  await page.locator('.level-option[data-level="doornail"]').click();
   const fake = scripted("B");
   await page.route("**/api/next", fake);
   await page.fill("#input", "Q");
   await page.click("#send");
   await page.waitForFunction(() => !document.querySelector("#send.stop"), null, T);
-  assert.ok(fake.requests.every((r) => !("rockInstructions" in r)));
+  assert.ok(fake.requests.every((r) => !("doornailInstructions" in r)));
 
   // Survives a reload (same tab), then Exit preview restores everything.
   await page.reload();
   await page.locator("#preview-banner").waitFor({ state: "visible", ...T });
   await page.click("#preview-exit");
   await page.locator("#preview-banner").waitFor({ state: "hidden", ...T });
-  assert.ok(await page.locator("#rock-lab-toggle").isVisible());
+  assert.ok(await page.locator("#doornail-lab-toggle").isVisible());
   assert.equal(await page.locator("#chat-count").textContent(), "6");
   await openMenu(page);
   assert.ok(await page.locator("#admin-link").isVisible());

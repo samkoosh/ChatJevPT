@@ -104,9 +104,9 @@ async function api(method, path, body, signal) {
 // A saved chat sends its id; the server ignores client history then.
 const context = (priorTurns, savedChat) => (savedChat ? { chatId: savedChat } : { history: priorTurns });
 
-function fetchNext(question, answer, priorTurns, signal, savedChat, { level, memory, rockInstructions }) {
+function fetchNext(question, answer, priorTurns, signal, savedChat, { level, memory, doornailInstructions }) {
   const body = { question, answer, level, memory, ...context(priorTurns, savedChat) };
-  if (rockInstructions != null) body.rockInstructions = rockInstructions;
+  if (doornailInstructions != null) body.doornailInstructions = doornailInstructions;
   return api("POST", "/api/next", body, signal);
 }
 
@@ -115,7 +115,8 @@ function fetchRating(question, answer, priorTurns, savedChat, { memory }) {
 }
 
 // Model level ("dumb as a ___") and chat memory, chosen in the composer and remembered.
-const LEVEL_NAMES = { rock: "Rock", stump: "Stump", post: "Post" };
+const LEVEL_NAMES = { doornail: "Doornail", rock: "Rock", stump: "Stump", post: "Post" };
+const FORGETFUL = ["doornail", "rock"]; // levels that never see earlier turns
 const prefs = { level: "stump", memory: true };
 try {
   const level = localStorage.getItem("jev-level");
@@ -128,11 +129,11 @@ const memoryToggle = document.getElementById("memory-toggle");
 
 function renderPrefs() {
   for (const b of levelButtons) b.setAttribute("aria-checked", String(b.dataset.level === prefs.level));
-  const rock = prefs.level === "rock";
-  memoryToggle.disabled = rock;
-  memoryToggle.setAttribute("aria-pressed", String(prefs.memory && !rock));
-  memoryToggle.title = rock
-    ? "Rocks don't remember anything"
+  const forgetful = FORGETFUL.includes(prefs.level);
+  memoryToggle.disabled = forgetful;
+  memoryToggle.setAttribute("aria-pressed", String(prefs.memory && !forgetful));
+  memoryToggle.title = forgetful
+    ? `${LEVEL_NAMES[prefs.level]}s don't remember anything`
     : prefs.memory
       ? "Memory on: Jev sees earlier questions in this chat"
       : "Memory off: each question stands alone";
@@ -159,12 +160,12 @@ memoryToggle.addEventListener("click", () => {
 });
 renderPrefs();
 
-// Rock lab (admins): edit Rock's instructions from the chat. The draft lives in this browser and
-// is sent with the admin's own Rock requests; Save makes it everyone's.
-const labToggle = document.getElementById("rock-lab-toggle");
-const labPanel = document.getElementById("rock-lab");
-const labText = document.getElementById("rock-lab-text");
-const labStatus = document.getElementById("rock-lab-status");
+// Doornail lab (admins): edit Doornail's instructions from the chat. The draft lives in this browser and
+// is sent with the admin's own Doornail requests; Save makes it everyone's.
+const labToggle = document.getElementById("doornail-lab-toggle");
+const labPanel = document.getElementById("doornail-lab");
+const labText = document.getElementById("doornail-lab-text");
+const labStatus = document.getElementById("doornail-lab-status");
 const lab = { saved: null, fallback: null, questions: null, loading: null, showRequest: false };
 
 const isAdminUser = () => showAdmin();
@@ -179,36 +180,36 @@ function labDraft() {
 function renderLabRequest() {
   const view = lab.showRequest && lab.questions;
   labText.hidden = Boolean(view);
-  document.getElementById("rock-lab-request").hidden = !view;
-  const button = document.getElementById("rock-lab-view");
+  document.getElementById("doornail-lab-request").hidden = !view;
+  const button = document.getElementById("doornail-lab-view");
   button.textContent = view ? "Edit instructions" : "Show full request";
   button.setAttribute("aria-pressed", String(Boolean(view)));
   if (!view) return;
   const { type, criteria } = lab.questions.next;
   const questions = { next: { type, instructions: labText.value.trim() ? labText.value : lab.fallback, criteria } };
-  document.getElementById("rock-lab-request-json").textContent = JSON.stringify(questions, null, 2);
+  document.getElementById("doornail-lab-request-json").textContent = JSON.stringify(questions, null, 2);
 }
 
 function renderLab() {
   renderLabRequest();
   const draft = labDraft();
-  document.getElementById("rock-lab-state").textContent =
+  document.getElementById("doornail-lab-state").textContent =
     draft ? "Your edits (only you)" : lab.saved === lab.fallback ? "Default" : "Saved for everyone";
-  document.getElementById("rock-lab-save").disabled = !draft;
-  document.getElementById("rock-lab-revert").disabled = !draft;
-  document.getElementById("rock-lab-reset").disabled = lab.saved === lab.fallback && !draft;
+  document.getElementById("doornail-lab-save").disabled = !draft;
+  document.getElementById("doornail-lab-revert").disabled = !draft;
+  document.getElementById("doornail-lab-reset").disabled = lab.saved === lab.fallback && !draft;
   labToggle.classList.toggle("edited", Boolean(draft));
 }
 
 function loadLab() {
-  lab.loading ??= api("GET", "/api/admin/rock")
+  lab.loading ??= api("GET", "/api/admin/doornail")
     .then((data) => {
       lab.saved = data.instructions;
       lab.fallback = data.default;
       lab.questions = data.questions;
       let draft = null;
       try {
-        draft = localStorage.getItem("jev-rock-draft");
+        draft = localStorage.getItem("jev-doornail-draft");
       } catch {}
       labText.value = draft ?? data.instructions;
       renderLab();
@@ -223,10 +224,10 @@ function setLabOpen(open) {
   labPanel.hidden = !open;
   labToggle.setAttribute("aria-expanded", String(open));
   if (!open) return;
-  // The lab is about Rock, so opening it switches to Rock.
-  if (prefs.level !== "rock") {
-    prefs.level = "rock";
-    savePref("jev-level", "rock");
+  // The lab is about Doornail, so opening it switches to Doornail.
+  if (prefs.level !== "doornail") {
+    prefs.level = "doornail";
+    savePref("jev-level", "doornail");
     renderPrefs();
   }
   loadLab()?.then(() => labText.focus());
@@ -234,11 +235,11 @@ function setLabOpen(open) {
 
 async function labSave(instructions, message) {
   try {
-    const data = await api("PUT", "/api/admin/rock", { instructions });
+    const data = await api("PUT", "/api/admin/doornail", { instructions });
     lab.saved = data.instructions;
     labText.value = data.instructions;
     try {
-      localStorage.removeItem("jev-rock-draft");
+      localStorage.removeItem("jev-doornail-draft");
     } catch {}
     labStatus.textContent = message;
   } catch (err) {
@@ -248,26 +249,26 @@ async function labSave(instructions, message) {
 }
 
 labToggle.addEventListener("click", () => setLabOpen(labPanel.hidden));
-document.getElementById("rock-lab-view").addEventListener("click", () => {
+document.getElementById("doornail-lab-view").addEventListener("click", () => {
   lab.showRequest = !lab.showRequest;
   renderLab();
   if (!lab.showRequest) labText.focus();
 });
-document.getElementById("rock-lab-close").addEventListener("click", () => setLabOpen(false));
+document.getElementById("doornail-lab-close").addEventListener("click", () => setLabOpen(false));
 labText.addEventListener("input", () => {
   try {
-    if (labText.value === lab.saved) localStorage.removeItem("jev-rock-draft");
-    else localStorage.setItem("jev-rock-draft", labText.value);
+    if (labText.value === lab.saved) localStorage.removeItem("jev-doornail-draft");
+    else localStorage.setItem("jev-doornail-draft", labText.value);
   } catch {}
   labStatus.textContent = "";
   renderLab();
 });
-document.getElementById("rock-lab-save").addEventListener("click", () => labSave(labText.value, "Saved. Everyone's Rock answers use this now."));
-document.getElementById("rock-lab-reset").addEventListener("click", () => labSave(null, "Back to the default instructions for everyone."));
-document.getElementById("rock-lab-revert").addEventListener("click", () => {
+document.getElementById("doornail-lab-save").addEventListener("click", () => labSave(labText.value, "Saved. Everyone's Doornail answers use this now."));
+document.getElementById("doornail-lab-reset").addEventListener("click", () => labSave(null, "Back to the default instructions for everyone."));
+document.getElementById("doornail-lab-revert").addEventListener("click", () => {
   labText.value = lab.saved;
   try {
-    localStorage.removeItem("jev-rock-draft");
+    localStorage.removeItem("jev-doornail-draft");
   } catch {}
   labStatus.textContent = "";
   renderLab();
@@ -384,8 +385,8 @@ async function ask(question) {
   setBusy(true);
   const started = performance.now();
   const priorTurns = history.slice(-6);
-  // Fixed for this answer, including an admin's Rock lab draft.
-  const settings = { level: prefs.level, memory: prefs.memory && prefs.level !== "rock", rockInstructions: prefs.level === "rock" ? labDraft() : null };
+  // Fixed for this answer, including an admin's Doornail lab draft.
+  const settings = { level: prefs.level, memory: prefs.memory && !FORGETFUL.includes(prefs.level), doornailInstructions: prefs.level === "doornail" ? labDraft() : null };
   const myChat = chatEpoch;
   let savedChat = signedIn() ? activeChatId : null;
   let lostSession = null;
