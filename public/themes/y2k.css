@@ -1292,3 +1292,11 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
 [data-ui-theme="y2k"] .rock-lab-request p {
   color: #000;
 }
+
+[data-ui-theme="y2k"] .stopped-tag {
+  border-radius: 0;
+  background: #ff0000;
+  color: #fff;
+  border: 1px solid #000;
+  font-weight: 700;
+}

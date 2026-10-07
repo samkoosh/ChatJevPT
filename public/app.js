@@ -281,6 +281,8 @@ const RATING_HINT = {
   Perfect: "exactly what was asked",
 };
 
+const stoppedTag = () => Object.assign(el("span", "stopped-tag", "Stopped"), { title: "You stopped this answer before Jev finished" });
+
 function ratingChip(rating) {
   if (rating === "pending") return el("span", "rating pending", "Rating…");
   const chip = el("span", `rating rating-${rating.label.toLowerCase()}`, rating.label);
@@ -288,10 +290,11 @@ function ratingChip(rating) {
   return chip;
 }
 
-function renderMeta(meta, { length, ms, cost, done, rating, answerText, question, level, stop }) {
+function renderMeta(meta, { length, ms, cost, done, rating, stopped, answerText, question, level, stop }) {
   meta.innerHTML = "";
   if (rating) meta.append(ratingChip(rating));
   if (level) meta.append(el("span", `level-tag level-${level}`, LEVEL_NAMES[level]));
+  if (done && stopped) meta.append(stoppedTag());
   if (!done) {
     const bar = el("span", "bar");
     const fill = el("i");
@@ -388,6 +391,7 @@ async function ask(question) {
   let lostSession = null;
   let answer = "";
   let spicy = false;
+  let stopped = false; // ended by the Stop button
   let tokens = 0;
   let cost = 0;
   let rating = null;
@@ -395,7 +399,7 @@ async function ask(question) {
   const text = () => answer.trim();
   const stats = (done) => {
     if (!done) ms = performance.now() - started; // the clock stops when the answer does
-    return { length: answer.length, ms, cost, done, rating, answerText: text, question, level: settings.level, stop: () => myController.abort() };
+    return { length: answer.length, ms, cost, done, rating, stopped, answerText: text, question, level: settings.level, stop: () => myController.abort() };
   };
 
   try {
@@ -432,7 +436,8 @@ async function ask(question) {
     thinking.remove();
     if (err.status === 401 || err.code === "blocked") lostSession = err;
     else if (NOTICES[err.code]) body.insertBefore(errorNotice(err.code, err.message), meta);
-    else if (err.name !== "AbortError") body.insertBefore(el("div", "error", err.message), meta);
+    else if (err.name === "AbortError") stopped = true;
+    else body.insertBefore(el("div", "error", err.message), meta);
     if (err.name !== "AbortError") emit("jev:error");
   } finally {
     caret.remove();
@@ -452,7 +457,7 @@ async function ask(question) {
   if (lostSession) return endSession(lostSession.code === "blocked" ? lostSession.message : "Your session ended. Sign in again.");
 
   // Signed in, the finished turn is saved to its chat, then its rating once Jev gives one.
-  const saved = savedChat && answer.trim() ? saveTurn(savedChat, { question, answer: answer.trim(), tokens, cost }) : null;
+  const saved = savedChat && answer.trim() ? saveTurn(savedChat, { question, answer: answer.trim(), tokens, cost, level: settings.level, ...(stopped ? { stopped: true } : {}) }) : null;
 
   // Once the answer is done, Jev grades it (with the same chat context it answered with).
   if (rating !== "pending") return;
@@ -871,6 +876,8 @@ function savedAnswer(turn) {
   const content = el("div");
   const meta = el("div", "meta");
   if (turn.label && typeof turn.score === "number") meta.append(ratingChip(turn));
+  if (LEVEL_NAMES[turn.level]) meta.append(el("span", `level-tag level-${turn.level}`, LEVEL_NAMES[turn.level]));
+  if (turn.stopped) meta.append(stoppedTag());
   const length = turn.answer.length;
   meta.append(el("span", null, `${length} character${length === 1 ? "" : "s"}`));
   if (typeof turn.cost === "number") meta.append(el("span", null, formatCost(turn.cost)));
