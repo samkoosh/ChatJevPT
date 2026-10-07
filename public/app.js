@@ -9,6 +9,11 @@ const tooltip = document.getElementById("tooltip");
 
 let controller = null; // AbortController for the answer being written
 
+// On touch devices, Enter inserts a newline and we don't refocus the input,
+// which would pop the keyboard over the answer.
+const touch = window.matchMedia("(pointer: coarse)").matches;
+const refocus = () => !touch && input.focus();
+
 const label = (option) => (option === "SPACE" ? "␣" : option === "END" ? "END" : option);
 
 // Jev only has capital letters; show them in sentence case so it reads like a reply.
@@ -50,7 +55,7 @@ async function fetchNext(question, answer, signal) {
     signal,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { code: data.code });
   return data;
 }
 
@@ -68,14 +73,27 @@ function renderMeta(meta, { length, calls, ms, done, answerText, question }) {
   const copy = el("button", "act");
   copy.innerHTML = `${icon('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>')}Copy`;
   copy.onclick = async () => {
-    await navigator.clipboard.writeText(answerText());
-    copy.lastChild.textContent = "Copied";
+    try {
+      await navigator.clipboard.writeText(answerText());
+      copy.lastChild.textContent = "Copied";
+    } catch {
+      copy.lastChild.textContent = "Couldn't copy";
+    }
     setTimeout(() => (copy.lastChild.textContent = "Copy"), 1400);
   };
   const retry = el("button", "act");
   retry.innerHTML = `${icon('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}Retry`;
   retry.onclick = () => !controller && ask(question);
   meta.append(copy, retry);
+}
+
+function creditsNotice(message) {
+  const notice = el("div", "notice");
+  notice.innerHTML = icon('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.3"/>');
+  const text = el("div");
+  text.append(el("strong", null, "Out of Jev credits"), el("p", null, message));
+  notice.append(text);
+  return notice;
 }
 
 async function ask(question) {
@@ -125,7 +143,8 @@ async function ask(question) {
     }
   } catch (err) {
     thinking.remove();
-    if (err.name !== "AbortError") body.insertBefore(el("div", "error", err.message), meta);
+    if (err.code === "out_of_credits") body.insertBefore(creditsNotice(err.message), meta);
+    else if (err.name !== "AbortError") body.insertBefore(el("div", "error", err.message), meta);
   } finally {
     caret.remove();
     msg.classList.remove("typing");
@@ -133,25 +152,29 @@ async function ask(question) {
     renderMeta(meta, stats(true));
     controller = null;
     setBusy(false);
-    input.focus();
+    refocus();
   }
 }
 
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
+function submit() {
   if (controller) return controller.abort();
   const question = input.value.trim();
   if (!question) return;
   input.value = "";
   autosize();
   ask(question);
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  submit();
 });
 
 input.addEventListener("input", autosize);
 input.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing && !touch) {
     event.preventDefault();
-    if (!controller) form.requestSubmit();
+    if (!controller) submit();
   }
 });
 
@@ -165,7 +188,7 @@ function newChat() {
   controller?.abort();
   thread.innerHTML = "";
   main.classList.add("empty");
-  input.focus();
+  refocus();
 }
 document.getElementById("new-chat").onclick = newChat;
 document.getElementById("new-chat-2").onclick = newChat;
