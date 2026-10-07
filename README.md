@@ -20,8 +20,8 @@ also stop early once the answer is complete. The answer types out live in a dark
   their probabilities. Characters that won a tie are underlined.
 - **Model levels**, as in "dumb as a ___", picked in the composer:
   - **Rock**: the naive version. One Choice per character over every character (labelled with the
-    character itself; the space, NEWLINE and END are described), with nothing but the question, the
-    answer so far and its remaining room (`additional_character_budget`); the most probable character wins. No word list, no
+    character itself; the space, NEWLINE and END are described), with nothing but the question and the
+    answer so far; the most probable character wins. No word list, no
     screening, no memory.
   - **Stump** (default): the full pipeline described below.
   - **Post**: locked, still in development.
