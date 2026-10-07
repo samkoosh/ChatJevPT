@@ -88,6 +88,26 @@
       <div class="thread" id="thread" aria-live="polite"></div>
 
       <div class="composer-wrap">
+        <section class="rock-lab" id="rock-lab" aria-label="Rock lab" hidden>
+          <div class="rock-lab-head">
+            <strong>Rock lab</strong>
+            <span class="rock-lab-state" id="rock-lab-state"></span>
+            <button type="button" class="icon-btn" id="rock-lab-close" aria-label="Close Rock lab">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          </div>
+          <p class="rock-lab-help">
+            Rock's instructions for each character. Your edits apply right away to <em>your</em> Rock answers; Save makes
+            them everyone's.
+          </p>
+          <textarea id="rock-lab-text" rows="4" maxlength="4000" spellcheck="false" aria-label="Rock instructions"></textarea>
+          <div class="rock-lab-actions">
+            <button type="button" class="btn primary" id="rock-lab-save">Save for everyone</button>
+            <button type="button" class="btn" id="rock-lab-revert">Discard my edits</button>
+            <button type="button" class="btn" id="rock-lab-reset">Reset to default</button>
+          </div>
+          <p class="rock-lab-status" id="rock-lab-status" role="status" aria-live="polite"></p>
+        </section>
         <form class="composer" id="composer">
           <textarea id="input" rows="1" placeholder="Ask Jev anything…" maxlength="2000" autofocus></textarea>
           <div class="composer-row">
@@ -101,6 +121,9 @@
               </div>
               <button type="button" class="memory-toggle" id="memory-toggle" aria-pressed="true">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></svg>Memory
+              </button>
+              <button type="button" class="lab-toggle" id="rock-lab-toggle" aria-expanded="false" aria-controls="rock-lab" title="Rock lab: edit Rock's instructions" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3" /><path d="M7.5 15h9" /></svg>Lab
               </button>
             </div>
             <button type="submit" class="send" id="send" aria-label="Send" disabled>

@@ -85,12 +85,14 @@ export async function openPage(browser, baseURL, { device, setup, path = "/" } =
       : route.abort(),
   );
   // Context routes run after page routes, so this only fires when a test
-  // didn't route that /api/* path. Accounts are off and ratings are free and
-  // "Good" by default; anything else is a leak, aborted so nothing reaches the server.
+  // didn't route that /api/* path. Accounts are off, ratings are free and "Good",
+  // and Rock's instructions are the default (an admin page loads them for the Rock lab);
+  // anything else is a leak, aborted so nothing reaches the server.
   await context.route(/\/api\//, (route) => {
     const { pathname } = new URL(route.request().url());
     if (pathname === "/api/me") return fulfill(route, 200, { authEnabled: false });
     if (pathname === "/api/rate") return fulfill(route, 200, DEFAULT_RATING);
+    if (pathname === "/api/admin/rock" && route.request().method() === "GET") return fulfill(route, 200, DEFAULT_ROCK);
     leaks.push(`unrouted ${route.request().method()} ${route.request().url()}`);
     return route.abort();
   });
@@ -121,6 +123,8 @@ const ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("");
 
 export const TOKENS_PER_CALL = 100;
 export const DEFAULT_RATING = { label: "Good", score: 3.1, tokens: 0, cost: 0 };
+export const ROCK_DEFAULT = "Which character should come next in `answer_so_far` to answer `question`?";
+export const DEFAULT_ROCK = { instructions: ROCK_DEFAULT, default: ROCK_DEFAULT, isDefault: true };
 export const COST_PER_CALL = 0.0001;
 
 function topFor(pick) {

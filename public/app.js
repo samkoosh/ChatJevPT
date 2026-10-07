@@ -90,8 +90,10 @@ async function api(method, path, body, signal) {
 // A saved chat sends its id; the server ignores client history then.
 const context = (priorTurns, savedChat) => (savedChat ? { chatId: savedChat } : { history: priorTurns });
 
-function fetchNext(question, answer, priorTurns, signal, savedChat, { level, memory }) {
-  return api("POST", "/api/next", { question, answer, level, memory, ...context(priorTurns, savedChat) }, signal);
+function fetchNext(question, answer, priorTurns, signal, savedChat, { level, memory, rockInstructions }) {
+  const body = { question, answer, level, memory, ...context(priorTurns, savedChat) };
+  if (rockInstructions != null) body.rockInstructions = rockInstructions;
+  return api("POST", "/api/next", body, signal);
 }
 
 function fetchRating(question, answer, priorTurns, savedChat, { memory }) {
@@ -142,6 +144,99 @@ memoryToggle.addEventListener("click", () => {
   renderPrefs();
 });
 renderPrefs();
+
+// Rock lab (admins): edit Rock's instructions from the chat. The draft lives in this browser and
+// is sent with the admin's own Rock requests; Save makes it everyone's.
+const labToggle = document.getElementById("rock-lab-toggle");
+const labPanel = document.getElementById("rock-lab");
+const labText = document.getElementById("rock-lab-text");
+const labStatus = document.getElementById("rock-lab-status");
+const lab = { saved: null, fallback: null, loading: null };
+
+const isAdminUser = () => me.user?.role === "admin";
+// The draft to send, or null when it's the same as what's saved (or there's no lab).
+function labDraft() {
+  if (!isAdminUser() || lab.saved == null) return null;
+  const draft = labText.value;
+  return draft.trim() && draft !== lab.saved ? draft : null;
+}
+
+function renderLab() {
+  const draft = labDraft();
+  document.getElementById("rock-lab-state").textContent =
+    draft ? "Your edits (only you)" : lab.saved === lab.fallback ? "Default" : "Saved for everyone";
+  document.getElementById("rock-lab-save").disabled = !draft;
+  document.getElementById("rock-lab-revert").disabled = !draft;
+  document.getElementById("rock-lab-reset").disabled = lab.saved === lab.fallback && !draft;
+  labToggle.classList.toggle("edited", Boolean(draft));
+}
+
+function loadLab() {
+  lab.loading ??= api("GET", "/api/admin/rock")
+    .then((data) => {
+      lab.saved = data.instructions;
+      lab.fallback = data.default;
+      let draft = null;
+      try {
+        draft = localStorage.getItem("jev-rock-draft");
+      } catch {}
+      labText.value = draft ?? data.instructions;
+      renderLab();
+    })
+    .catch(() => {
+      lab.loading = null; // try again next time
+    });
+  return lab.loading;
+}
+
+function setLabOpen(open) {
+  labPanel.hidden = !open;
+  labToggle.setAttribute("aria-expanded", String(open));
+  if (!open) return;
+  // The lab is about Rock, so opening it switches to Rock.
+  if (prefs.level !== "rock") {
+    prefs.level = "rock";
+    savePref("jev-level", "rock");
+    renderPrefs();
+  }
+  loadLab()?.then(() => labText.focus());
+}
+
+async function labSave(instructions, message) {
+  try {
+    const data = await api("PUT", "/api/admin/rock", { instructions });
+    lab.saved = data.instructions;
+    labText.value = data.instructions;
+    try {
+      localStorage.removeItem("jev-rock-draft");
+    } catch {}
+    labStatus.textContent = message;
+  } catch (err) {
+    labStatus.textContent = err.message;
+  }
+  renderLab();
+}
+
+labToggle.addEventListener("click", () => setLabOpen(labPanel.hidden));
+document.getElementById("rock-lab-close").addEventListener("click", () => setLabOpen(false));
+labText.addEventListener("input", () => {
+  try {
+    if (labText.value === lab.saved) localStorage.removeItem("jev-rock-draft");
+    else localStorage.setItem("jev-rock-draft", labText.value);
+  } catch {}
+  labStatus.textContent = "";
+  renderLab();
+});
+document.getElementById("rock-lab-save").addEventListener("click", () => labSave(labText.value, "Saved. Everyone's Rock answers use this now."));
+document.getElementById("rock-lab-reset").addEventListener("click", () => labSave(null, "Back to the default instructions for everyone."));
+document.getElementById("rock-lab-revert").addEventListener("click", () => {
+  labText.value = lab.saved;
+  try {
+    localStorage.removeItem("jev-rock-draft");
+  } catch {}
+  labStatus.textContent = "";
+  renderLab();
+});
 
 const RATING_HINT = {
   Terrible: "wrong or gibberish",
@@ -251,7 +346,8 @@ async function ask(question) {
   setBusy(true);
   const started = performance.now();
   const priorTurns = history.slice(-6);
-  const settings = { level: prefs.level, memory: prefs.memory && prefs.level !== "rock" }; // fixed for this answer
+  // Fixed for this answer, including an admin's Rock lab draft.
+  const settings = { level: prefs.level, memory: prefs.memory && prefs.level !== "rock", rockInstructions: prefs.level === "rock" ? labDraft() : null };
   const myChat = chatEpoch;
   let savedChat = signedIn() ? activeChatId : null;
   let lostSession = null;
@@ -490,6 +586,8 @@ function applyAccount() {
   document.getElementById("account-name").textContent = name || "";
   document.getElementById("account-email").textContent = email;
   document.getElementById("admin-link").hidden = role !== "admin";
+  labToggle.hidden = role !== "admin";
+  if (role === "admin") loadLab();
   renderUsage();
 }
 
