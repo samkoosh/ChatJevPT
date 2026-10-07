@@ -1,4 +1,4 @@
-import { MAX_LENGTH, nextCharacter } from "../lib/jev.js";
+import { ANSWER_PATTERN, MAX_LENGTH, nextCharacter } from "../lib/jev.js";
 
 const MAX_QUESTION = 2000;
 
@@ -15,7 +15,7 @@ export async function POST(request) {
   if (!question || question.length > MAX_QUESTION) {
     return Response.json({ error: `Question must be 1–${MAX_QUESTION} characters.` }, { status: 400 });
   }
-  if (answer === null || answer.length >= MAX_LENGTH || !/^[A-Z ]*$/.test(answer)) {
+  if (answer === null || answer.length >= MAX_LENGTH || !ANSWER_PATTERN.test(answer)) {
     return Response.json({ error: "Invalid answer so far." }, { status: 400 });
   }
   if (!process.env.TYPESAFE_API_KEY && process.env.JEV_MOCK !== "1") {

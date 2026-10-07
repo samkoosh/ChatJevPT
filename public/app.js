@@ -14,10 +14,6 @@ let controller = null; // AbortController for the answer being written
 const touch = window.matchMedia("(pointer: coarse)").matches;
 const refocus = () => !touch && input.focus();
 
-const label = (option) => (option === "SPACE" ? "␣" : option === "END" ? "END" : option);
-
-// Jev only has capital letters; show them in sentence case so it reads like a reply.
-const display = (raw, index) => (index === 0 ? raw : raw.toLowerCase());
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -118,18 +114,17 @@ async function ask(question) {
   const started = performance.now();
   let answer = "";
   let calls = 0;
-  const text = () => [...answer].map(display).join("").trim();
+  const text = () => answer.trim();
   const stats = (done) => ({ length: answer.length, calls, ms: performance.now() - started, done, answerText: text, question });
 
   try {
     while (answer.length < MAX_LENGTH) {
-      const { pick, top, tied } = await fetchNext(question, answer, controller.signal);
+      const { pick, char, top, tied } = await fetchNext(question, answer, controller.signal);
       calls++;
       thinking.remove();
       if (pick === "END") break;
 
-      const raw = pick === "SPACE" ? " " : pick;
-      const span = el("span", "ch new", display(raw, answer.length));
+      const span = el("span", "ch new", char);
       span.dataset.top = JSON.stringify(top);
       span.dataset.pick = pick;
       if (tied > 1) {
@@ -137,7 +132,7 @@ async function ask(question) {
         span.dataset.tied = tied;
       }
       answerEl.insertBefore(span, caret);
-      answer += raw;
+      answer += char;
       renderMeta(meta, stats(false));
       scrollToBottom();
     }
@@ -205,7 +200,7 @@ function showTooltip(span) {
     const fill = el("i");
     fill.style.width = `${Math.max(p * 100, 1)}%`;
     track.append(fill);
-    row.append(el("span", null, label(option)), track, el("span", null, `${(p * 100).toFixed(1)}%`));
+    row.append(el("span", null, option), track, el("span", null, `${(p * 100).toFixed(1)}%`));
     tooltip.append(row);
   }
   tooltip.hidden = false;
