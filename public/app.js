@@ -119,7 +119,7 @@ async function ask(question) {
 
   try {
     while (answer.length < MAX_LENGTH) {
-      const { pick, char, top, tied } = await fetchNext(question, answer, controller.signal);
+      const { pick, char, top, tied, coinFlip } = await fetchNext(question, answer, controller.signal);
       calls++;
       thinking.remove();
       if (pick === "END") break;
@@ -130,6 +130,7 @@ async function ask(question) {
       if (tied > 1) {
         span.classList.add("tied");
         span.dataset.tied = tied;
+        if (coinFlip) span.dataset.coin = "1";
       }
       answerEl.insertBefore(span, caret);
       answer += char;
@@ -192,7 +193,8 @@ document.getElementById("new-chat-2").onclick = newChat;
 function showTooltip(span) {
   const top = JSON.parse(span.dataset.top);
   tooltip.innerHTML = "";
-  const tied = span.dataset.tied ? ` · ${span.dataset.tied}-way tie, coin flip` : "";
+  const how = span.dataset.coin ? "coin flip" : "runoff";
+  const tied = span.dataset.tied ? ` · ${span.dataset.tied}-way tie, ${how}` : "";
   tooltip.append(el("h4", null, `Jev's top picks${tied}`));
   for (const { option, p } of top) {
     const row = el("div", `row${option === span.dataset.pick ? " picked" : ""}`);
