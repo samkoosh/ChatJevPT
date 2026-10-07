@@ -1,8 +1,19 @@
 import { ANSWER_PATTERN, MAX_LENGTH, rateAnswer } from "../lib/jev.js";
 import { jevErrorResponse, missingKeyResponse } from "../lib/errors.js";
+import { authenticate, budgetResponse, charge } from "../lib/auth.js";
+import { chatHistory } from "../lib/chats.js";
 
-// POST { question, answer, history } -> { label, score, tokens, cost }
-export async function POST(request) {
+// POST { question, answer, history } -> { label, score, tokens, cost }.
+// With accounts on: { question, answer, chatId }, and the history comes from the saved chat.
+export function POST(request) {
+  return handle(request);
+}
+
+// `systemOne` swaps Jev out in tests.
+export async function handle(request, { systemOne } = {}) {
+  const auth = await authenticate(request);
+  if (auth.response) return auth.response;
+
   let body;
   try {
     body = await request.json();
@@ -18,9 +29,21 @@ export async function POST(request) {
   const noKey = missingKeyResponse();
   if (noKey) return noKey;
 
+  let history = body.history;
+  if (auth.user) {
+    const overBudget = budgetResponse(auth.user);
+    if (overBudget) return overBudget;
+    const chat = await chatHistory(auth.user, body.chatId, { question, answer });
+    if (chat.response) return chat.response;
+    history = chat.history;
+  }
+
+  let result;
   try {
-    return Response.json(await rateAnswer(question, answer, body.history));
+    result = await rateAnswer(question, answer, history, { systemOne });
   } catch (err) {
     return jevErrorResponse(err);
   }
+  if (auth.user) await charge(auth.user, result);
+  return Response.json(result);
 }
