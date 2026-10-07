@@ -1185,3 +1185,43 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
     display: none;
   }
 }
+
+/* Model level picker and memory toggle: beveled Win98 buttons. */
+[data-ui-theme="y2k"] .levels {
+  border: 2px inset #f0f0f0;
+  border-radius: 0;
+  background: #c0c0c0;
+}
+
+[data-ui-theme="y2k"] .level-option,
+[data-ui-theme="y2k"] .memory-toggle {
+  border-radius: 0;
+  font-family: "Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive;
+  color: #000;
+}
+
+[data-ui-theme="y2k"] .level-option[aria-checked="true"] {
+  background: #000080;
+  color: #ffff00;
+}
+
+[data-ui-theme="y2k"] .level-option:disabled {
+  color: #6b6b6b;
+}
+
+[data-ui-theme="y2k"] .memory-toggle {
+  background: #c0c0c0;
+  border: 2px outset #f0f0f0;
+}
+
+[data-ui-theme="y2k"] .memory-toggle[aria-pressed="true"] {
+  border-style: inset;
+  background: #00ff66;
+}
+
+[data-ui-theme="y2k"] .level-tag {
+  border-radius: 0;
+  background: #ffff00;
+  color: #000;
+  border: 1px solid #000;
+}

@@ -18,8 +18,15 @@ also stop early once the answer is complete. The answer types out live in a dark
 - **Live, letter-by-letter answers** with a progress bar and a Stop button while typing.
 - **See inside the "model"**: hover (or tap, on mobile) any letter to see Jev's top five candidates and
   their probabilities. Characters that won a tie are underlined.
-- **Follow-up questions**: earlier turns in the chat are sent along, so "What about Germany?" after
-  "What is the capital of France?" gets "Berlin". New chat starts fresh.
+- **Model levels**, as in "dumb as a ___", picked in the composer:
+  - **Rock**: the naive version. One Choice per character over every character, with nothing but the
+    question and the answer so far; the most probable character wins. No word list, no screening, no
+    memory.
+  - **Stump** (default): the full pipeline described below.
+  - **Post**: locked, still in development.
+- **Memory toggle**: with memory on (the default), earlier turns in the chat are sent along, so "What
+  about Germany?" after "What is the capital of France?" gets "Berlin". Off, each question stands alone
+  (for the answer and its rating). Rock never uses memory. New chat starts fresh either way.
 - **Jev grades its own answers**: when an answer finishes, one more Jev call (a five-level Score
   question, with the chat context) tags it **Terrible, Bad, Solid, Good or Perfect**. In testing the
   tag tracked correctness well: right answers came back Perfect, rambling ones Bad or Terrible.
@@ -162,12 +169,12 @@ sends the question and the answer so far, so it's small: a whole answer costs a 
 TypeSafe's list price ($0.042 per million input tokens; output is free). The header's cost meter shows
 the running total. Without accounts,
 `/api/next` is public, so anyone with the link spends your credits. Turn on [Accounts](#accounts) to
-limit it to people you allow, each with a monthly budget.
+limit it to people you allow, each with a spending allowance.
 
 ## Accounts
 
-Optional Google sign-in, so only people you allow can use ChatJevPT, each with a monthly budget and up
-to 5 saved chats.
+Optional Google sign-in, so only people you allow can use ChatJevPT, each with a lifetime spending
+allowance ($0.25 by default) and up to 5 saved chats.
 
 ### How it works
 
@@ -179,17 +186,20 @@ to 5 saved chats.
   shows up under **Waiting for access** on the admin page, where one click lets them in.
 - The server then sets its own session cookie (`__Host-session`, HttpOnly, Secure, SameSite=Lax, 7 days,
   signed with `SESSION_SECRET`). On `http://localhost` it's called `session` and isn't Secure.
-- Every Jev call checks the person's budget first and charges the actual tokens and cost afterwards.
-  When the month's budget is used, they see "Monthly budget used" until the 1st (UTC).
+- Every Jev call checks the person's allowance first and charges the actual tokens and cost afterwards.
+  The allowance is a lifetime total ($0.25 unless you set theirs on the admin page; it doesn't reset).
+  Once it's used, they see "Allowance used up" and can ask you for more.
 - **Admins have no budget limit.** Everyone with role admin, including everyone in `ADMIN_EMAILS`, is
-  never blocked; their usage is still recorded and shown ("Usage: $X this month · no limit").
+  never blocked; their usage is still recorded and shown ("Usage: $X total · no limit").
 - **Saved chats**: signed-in people get a sidebar with up to 5 chats (50 questions each). The server
   keeps the history: requests send a `chatId` and the server uses that chat's last 6 turns, ignoring any
   history from the browser.
 - Writes (POST/PUT/DELETE) must come from the page itself: same `Origin` and a JSON content type,
   otherwise 403.
-- `/admin.html` (admins only): everyone's spend this month, tokens, budget and last sign-in; edit
-  budgets inline, block or unblock, approve requests, add people.
+- `/admin.html` (admins only, also linked from the avatar menu): everyone's total spend, tokens,
+  allowance and last sign-in; edit allowances inline, block or unblock, add people by email, and
+  approve anyone listed under **Waiting for access** (people who tried to sign in but aren't on the
+  list yet).
 
 ### Three modes
 
@@ -206,7 +216,7 @@ to 5 saved chats.
 Neon Postgres; tables are created on first use (`CREATE TABLE IF NOT EXISTS`), no migrations to run.
 
 - `users`: email (key), Google profile, `role` (`user`/`admin`), `status` (`allowed`/`blocked`),
-  `monthly_budget_micros` (null = `DEFAULT_MONTHLY_BUDGET_USD`), created and last-seen times.
+  `monthly_budget_micros` (null = `DEFAULT_BUDGET_USD`), created and last-seen times.
 - `usage`: one row per person per UTC day (tokens, cost in micro-dollars, calls); the month is a sum.
   Charges are a single atomic upsert, so parallel requests can't lose usage.
 - `chats`: id, owner, title, `turns` as JSON (question, answer, rating, tokens, cost).
@@ -231,7 +241,7 @@ cent.
    - `SESSION_SECRET`: the output of `openssl rand -base64 32`. Use different values for Production and
      Preview.
    - `ADMIN_EMAILS`: your Google email (comma-separate several).
-   - Optionally `DEFAULT_MONTHLY_BUDGET_USD` (defaults to `1.00`).
+   - Optionally `DEFAULT_BUDGET_USD` (defaults to `1.00`).
 4. Redeploy.
 5. Sign in, then open `/admin.html` to add people or approve requests.
 
@@ -267,7 +277,7 @@ chat and account requests around them. Jev's cost per answer stays a fraction of
 | `SESSION_SECRET` | Accounts | Signs session cookies; `openssl rand -base64 32`, different per environment |
 | `DATABASE_URL` | Accounts | Neon Postgres connection string (set by the Vercel–Neon integration) |
 | `ADMIN_EMAILS` | No | Comma-separated Google emails that are admins (no budget limit) |
-| `DEFAULT_MONTHLY_BUDGET_USD` | No | Monthly budget for people without their own (defaults to `1.00`) |
+| `DEFAULT_BUDGET_USD` | No | Lifetime allowance for people without their own (defaults to `0.25`) |
 | `STORE` | No | `memory` for an in-memory store (local dev and tests only) |
 | `DEV_LOGIN_EMAIL` | No | Local dev only: enables `POST /api/auth/dev` for this email; ignored on Vercel |
 

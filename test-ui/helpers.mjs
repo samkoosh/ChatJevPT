@@ -246,13 +246,13 @@ export const ADMIN = { email: "owner@example.com", name: "Owner", picture: null,
 // A fake accounts backend: /api/me, /api/auth/*, /api/logout and /api/chats[/id], kept in
 // memory per page. Every request is logged in `log` as "METHOD /path" with its body.
 //   user:   the signed-in user, or null for signed out
-//   usage:  { monthCostMicros, monthTokens, budgetMicros }
+//   usage:  { totalCostMicros, totalTokens, budgetMicros }
 //   chats:  [{ id, title, updatedAt, turns }]
 //   signIn: response for POST /api/auth/google: { status, body }
 export function fakeAccounts({ user = USER, usage, chats = [], signIn, googleClientId = "test-client" } = {}) {
   const state = {
     user,
-    usage: usage ?? { monthCostMicros: 120_000, monthTokens: 3400, budgetMicros: user?.role === "admin" ? null : 1_000_000 },
+    usage: usage ?? { totalCostMicros: 120_000, totalTokens: 3400, budgetMicros: user?.role === "admin" ? null : 1_000_000 },
     chats: chats.map((c) => ({ turns: [], ...c })),
   };
   const log = [];

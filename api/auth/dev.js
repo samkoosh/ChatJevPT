@@ -1,4 +1,4 @@
-import { account, authMode, csrfError, devLoginEmail, monthStart, notFound, sessionCookie, signSession } from "../../lib/auth.js";
+import { account, authMode, csrfError, devLoginEmail, usageSince, notFound, sessionCookie, signSession } from "../../lib/auth.js";
 import { getStore } from "../../lib/store.js";
 
 // Local dev only: POST signs in as DEV_LOGIN_EMAIL (as an admin) without Google.
@@ -11,6 +11,6 @@ export async function POST(request) {
 
   const store = getStore();
   await store.signIn({ email, googleSub: null, name: "Dev", picture: null }, { admin: true });
-  const user = await store.getUser(email, monthStart());
+  const user = await store.getUser(email, usageSince());
   return Response.json(account(user), { headers: { "set-cookie": sessionCookie(request, await signSession(email)) } });
 }

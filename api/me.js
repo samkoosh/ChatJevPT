@@ -1,4 +1,4 @@
-import { account, authMode, clearedCookie, devLoginEmail, misconfiguredResponse, monthStart, sessionEmail } from "../lib/auth.js";
+import { account, authMode, clearedCookie, devLoginEmail, misconfiguredResponse, usageSince, sessionEmail } from "../lib/auth.js";
 import { getStore } from "../lib/store.js";
 
 // GET -> { authEnabled, user?, usage?, googleClientId?, devLogin? }
@@ -8,7 +8,7 @@ export async function GET(request) {
   if (mode === "misconfigured") return misconfiguredResponse(missing);
 
   const email = await sessionEmail(request);
-  const user = email ? await getStore().getUser(email, monthStart()) : null;
+  const user = email ? await getStore().getUser(email, usageSince()) : null;
   if (user?.status === "allowed") return Response.json(account(user));
 
   const signedOut = { authEnabled: true, googleClientId: process.env.GOOGLE_CLIENT_ID || null };
