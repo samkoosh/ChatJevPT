@@ -1,5 +1,0 @@
-{
-  "functions": {
-    "api/eval.js": { "maxDuration": 300 }
-  }
-}
