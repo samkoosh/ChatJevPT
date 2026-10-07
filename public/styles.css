@@ -104,6 +104,23 @@ svg {
   padding: 3px 10px;
 }
 
+.cost-meter {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cost-meter b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.cost-meter + .icon-btn {
+  margin-left: 0;
+}
+
 .icon-btn {
   margin-left: auto;
   width: 36px;
@@ -573,6 +590,12 @@ main:not(.empty) .composer-wrap {
   }
   .answer {
     font-size: 17px;
+  }
+}
+
+@media (max-width: 380px) {
+  .cost-label {
+    display: none;
   }
 }
 

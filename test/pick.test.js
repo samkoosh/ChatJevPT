@@ -79,3 +79,32 @@ test("option order is shuffled between calls", async () => {
   const orders = new Set(jev.requests.filter((r) => r.questions.done).map((r) => Object.keys(r.questions.next.criteria).join("|")));
   assert.ok(orders.size > 1);
 });
+
+test("an unfinished word can't be ended with a space, punctuation or END", async () => {
+  // Jev "prefers" SPACE, but says "bl" isn't a finished word.
+  const jev = fakeJev((o) => (o === "SPACE" ? 10 : o === "U" ? 5 : 1), { wordDone: 0.1 });
+  const r = await nextCharacter("What color is the sky?", "The sky is bl", [], jev);
+  assert.equal(r.pick, "U");
+  assert.equal(jev.requests[0].state.word_in_progress, "bl");
+});
+
+test("a finished word can be ended", async () => {
+  const jev = fakeJev((o) => (o === "SPACE" ? 10 : 1), { wordDone: 0.9 });
+  const r = await nextCharacter("q", "The sky is blue", [], jev);
+  assert.equal(r.pick, "SPACE");
+});
+
+test("word_done isn't asked between words or inside numbers", async () => {
+  const jev = fakeJev(() => 1);
+  await nextCharacter("q", "The ", [], jev);
+  await nextCharacter("q", "It is 4", [], jev);
+  assert.ok(jev.requests.every((r) => !r.questions.word_done));
+});
+
+test("token usage and cost include runoff calls", async () => {
+  const base = fakeJev((o) => (["X", "Y"].includes(o) ? 5 : 1));
+  const systemOne = async (req) => ({ ...(await base.systemOne(req)), usage: { input_tokens: 1000, output_tokens: 0 } });
+  const r = await nextCharacter("q", "", [], { systemOne });
+  assert.equal(r.tokens, 3000, "first round plus two runoffs");
+  assert.ok(Math.abs(r.cost - 3000 / 1e6 * 0.042) < 1e-12);
+});
