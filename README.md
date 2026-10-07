@@ -1,4 +1,4 @@
-# ChatGPJev
+# ChatJevPT
 
 A fake transformer. Ask a question and [Jev](https://typesafe.ai) (TypeSafe AI's System One model) writes a
 140-character answer **one letter at a time**: every character is its own Jev **Choice** question over
