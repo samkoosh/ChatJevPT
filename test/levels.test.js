@@ -29,13 +29,13 @@ test("Rock: one Choice over every character, with only the question and the answ
   assert.deepEqual(jev.requests[0].state, { question: "What color is the sky?", answer_so_far: "" });
   const criteria = jev.requests[0].questions.next.criteria;
   const labels = Object.keys(criteria);
-  for (const o of ["A", "Z", "0", "9", " ", "NEWLINE", ".", "?", "'", "-"]) assert.ok(labels.includes(o), JSON.stringify(o));
-  assert.ok(!labels.includes("SPACE"), "a space is labelled with a space");
+  for (const o of ["A", "Z", "0", "9", "space", "NEWLINE", ".", "?", "'", "-"]) assert.ok(labels.includes(o), JSON.stringify(o));
+  assert.ok(!labels.includes(" ") && !labels.includes("SPACE"), "a space is labelled with the word space");
   for (const [label, description] of Object.entries(criteria)) assert.ok(description, `${JSON.stringify(label)} is described`);
   assert.equal(criteria.A, "The letter A.");
   assert.equal(criteria["7"], "The digit 7.");
   assert.equal(criteria["?"], "A question mark.");
-  assert.equal(criteria[" "], "A space between words (as though the keyboard's space bar was pressed).");
+  assert.equal(criteria.space, "A space between words (as though the keyboard's space bar was pressed).");
   assert.equal(criteria.NEWLINE, "A line break (as though the keyboard's Return key was pressed).");
   assert.ok(!labels.includes(END), "can't end before writing anything");
   assert.equal(r.pick, "B");
@@ -44,7 +44,7 @@ test("Rock: one Choice over every character, with only the question and the answ
 });
 
 test("Rock offers END once something is written, and has no other rules", async () => {
-  const jev = recorder(" ");
+  const jev = recorder("space");
   const r = await rockCharacter("q", "zzq ", jev);
   const criteria = jev.requests[0].questions.next.criteria;
   assert.equal(criteria[END], "The end of the answer, used to immediately stop generation. Use when the answer is satisfactory and complete.");
