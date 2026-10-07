@@ -32,7 +32,7 @@ test("Rock: one Choice over every character, with only the question and the answ
   for (const o of ["A", "Z", "0", "9", " ", "NEWLINE", ".", "?", "'", "-"]) assert.ok(labels.includes(o), JSON.stringify(o));
   assert.ok(!labels.includes("SPACE"), "a space is labelled with a space");
   assert.equal(criteria.A, null, "real characters need no description");
-  assert.equal(criteria[" "], null);
+  assert.equal(criteria[" "], "A space between words (as though the keyboard's space bar was pressed).");
   assert.equal(criteria.NEWLINE, "A line break (as though the keyboard's Return key was pressed).");
   assert.ok(!labels.includes(END), "can't end before writing anything");
   assert.equal(r.pick, "B");
