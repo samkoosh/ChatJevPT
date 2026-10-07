@@ -113,3 +113,22 @@ test("a word can only end once it's a real word", () => {
   assert.ok(allowedOptions("Be").includes("SPACE"));
   assert.ok(allowedOptions("Shakespeare").includes("END"));
 });
+
+test("no looping phrases: a three-word phrase can't repeat, and words can't be overused", async () => {
+  const { loops } = await import("../lib/jev.js");
+  assert.ok(loops("from the there and from the there"), "repeated trigram");
+  assert.ok(!loops("the cat sat on the mat"));
+  assert.ok(loops("there is there and there"), "a longer word a third time");
+  assert.ok(!loops("the sky and the sea and the sun"), "short words up to 4 times");
+  assert.ok(loops("the a the b the c the d the"), "a short word a fifth time");
+
+  const ends = (answer) => allowedOptions(answer).filter((o) => o === "SPACE" || o === "." || o === "END");
+  assert.deepEqual(ends("from the there and from the there"), [], "the loop can't be finished");
+  assert.ok(allowedOptions("from the there and from the there").includes("F"), "can extend: therefore");
+  assert.ok(ends("The sky is blue").includes("SPACE"));
+});
+
+test("allowRepeats lets a requested repetition through", () => {
+  assert.ok(!allowedOptions("Duck duck").includes("SPACE"));
+  assert.ok(allowedOptions("Duck duck", { allowRepeats: true }).includes("SPACE"));
+});

@@ -115,3 +115,23 @@ test("the word-complete check only holds short words open", async () => {
   assert.equal(r.pick, "SPACE", "7-letter word isn't held open");
   assert.equal(jev.requests[0].questions.word_done, undefined);
 });
+
+test("repetition is allowed when Jev says the question asks for it", async () => {
+  const jev = fakeJev((o) => (o === "SPACE" ? 10 : 1), { repeatOk: 0.9 });
+  const r = await nextCharacter("Say duck 6 times", "Duck duck", [], jev);
+  assert.equal(r.pick, "SPACE");
+  assert.ok(jev.requests[0].questions.repeat_ok, "asked because the answer repeats");
+});
+
+test("repetition is blocked when Jev says it's a loop", async () => {
+  const jev = fakeJev((o) => (o === "SPACE" ? 10 : o === "S" ? 5 : 1), { repeatOk: 0.1 });
+  const r = await nextCharacter("Why is the sky blue?", "from the there and from the there", [], jev);
+  assert.notEqual(r.pick, "SPACE");
+  assert.equal(r.pick, "S", "has to become a different word (theres)");
+});
+
+test("repeat_ok is only asked when the answer repeats", async () => {
+  const jev = fakeJev(() => 1);
+  await nextCharacter("q", "The sky is blue", [], jev);
+  assert.equal(jev.requests[0].questions.repeat_ok, undefined);
+});
