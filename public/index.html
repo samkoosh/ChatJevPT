@@ -14,6 +14,15 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
+    <!-- Themes: apply the saved one before first paint (see public/theme.js). -->
+    <script>
+      try {
+        if (localStorage.getItem("jev-ui-theme") === "y2k") document.documentElement.dataset.uiTheme = "y2k";
+      } catch (e) {}
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/themes/y2k.css" />
+    <script src="/theme.js" defer></script>
   </head>
   <body>
     <header class="topbar">

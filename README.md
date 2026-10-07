@@ -31,6 +31,24 @@ also stop early once the answer is complete. The answer types out live in a dark
 - **Works on mobile, Chrome and Safari**: on touch screens Enter adds a newline (tap send instead) and
   the keyboard stays out of the way while an answer types out.
 
+## Themes
+
+The switch in the top bar flips between two looks:
+
+- **Modern** (the default): the dark, Claude-style UI.
+- **✨ Y2K**: a lovingly bad 1999 homepage. Comic Sans, WordArt, a starfield, Windows 98 dialogs,
+  a marquee, blinking NEW! badges, a hit counter, sparkle cursor trails and synthesized sound effects
+  (a blip per letter, a dial-up chirp on send, a ding when done, a sad trombone for Terrible, a fanfare
+  for Perfect, a sizzle when Jev gets too spicy). The speaker button next to the switch mutes it.
+
+Switching never touches the chat: it only sets `<html data-ui-theme="y2k">`, so an answer that's
+typing keeps typing. The choice (and the mute) is saved in `localStorage` and applied by a small
+inline script in `<head>` before first paint. The theme lives in `public/themes/y2k.css` (everything
+scoped under `[data-ui-theme="y2k"]`) and `public/theme.js` (switch, decorations, sounds), which
+listens for `jev:send`, `jev:char`, `jev:done`, `jev:rated` and `jev:error` events from `app.js`.
+Sounds play only in Y2K, only after you've clicked or typed, and `prefers-reduced-motion` turns the
+animations off.
+
 ## How it works
 
 ```
@@ -98,7 +116,7 @@ Three suites, so the UI can be tested without spending Jev calls:
 | Command | What it tests | Calls Jev? |
 | --- | --- | --- |
 | `npm test` | Option rules, picking, runoffs, history, cost, dictionary, API validation, with a fake Jev | No |
-| `npm run test:ui` | The chat UI in headless Chromium; `/api/next` is spoofed in the browser | No |
+| `npm run test:ui` | The chat UI and both themes in headless Chromium; `/api/next` is spoofed in the browser | No |
 | `npm run test:content` | Answer quality: a fixed question set (`lib/eval.js`) run 3 times each against real Jev, headless | Yes, about $0.07 a run |
 
 `test:ui` needs Chromium: `npx playwright install chromium`, or point `CHROMIUM_PATH` at an existing

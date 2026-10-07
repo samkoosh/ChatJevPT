@@ -13,6 +13,9 @@ const chatUsage = { tokens: 0, cost: 0 };
 let chatId = 0; // bumped by New chat, so late ratings don't count toward the new chat's cost
 const costMeter = document.getElementById("cost-meter");
 
+// Theme hooks: public/theme.js listens for these (Y2K sound effects).
+const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }));
+
 const formatCost = (cost) => (cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`);
 const formatTokens = (n) => (n < 1000 ? `${n}` : `${(n / 1000).toFixed(n < 10000 ? 1 : 0)}k`);
 
@@ -154,6 +157,7 @@ function creditsNotice(message) {
 async function ask(question) {
   main.classList.remove("empty");
   thread.append(el("div", "msg-user", question));
+  emit("jev:send");
 
   const msg = el("div", "msg-jev typing");
   msg.innerHTML = `<svg class="spark avatar" viewBox="0 0 24 24" aria-hidden="true"><use href="#spark"/></svg>`;
@@ -207,6 +211,7 @@ async function ask(question) {
       }
       answerEl.insertBefore(span, caret);
       answer += char;
+      emit("jev:char", char);
       renderMeta(meta, stats(false));
       scrollToBottom();
     }
@@ -214,10 +219,12 @@ async function ask(question) {
     thinking.remove();
     if (err.code === "out_of_credits") body.insertBefore(creditsNotice(err.message), meta);
     else if (err.name !== "AbortError") body.insertBefore(el("div", "error", err.message), meta);
+    if (err.name !== "AbortError") emit("jev:error");
   } finally {
     caret.remove();
     msg.classList.remove("typing");
     if (spicy) body.insertBefore(spicyNotice(), meta);
+    emit("jev:done", { spicy });
     stats(false);
     if (!answer) answerEl.remove();
     else history.push({ question, answer: answer.trim() });
@@ -234,6 +241,7 @@ async function ask(question) {
   try {
     const result = await fetchRating(question, answer.trim(), priorTurns);
     rating = result;
+    emit("jev:rated", result.label);
     cost += result.cost ?? 0;
     if (myChat === chatId) addUsage(result.tokens, result.cost);
   } catch {
