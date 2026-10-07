@@ -10,6 +10,7 @@ const tooltip = document.getElementById("tooltip");
 let controller = null; // AbortController for the answer being written
 let history = []; // finished turns in this chat, sent so Jev can follow up
 const chatUsage = { tokens: 0, cost: 0 };
+let chatId = 0; // bumped by New chat, so late ratings don't count toward the new chat's cost
 const costMeter = document.getElementById("cost-meter");
 
 const formatCost = (cost) => (cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`);
@@ -68,8 +69,34 @@ async function fetchNext(question, answer, priorTurns, signal) {
   return data;
 }
 
-function renderMeta(meta, { length, calls, ms, cost, done, answerText, question }) {
+async function fetchRating(question, answer, priorTurns) {
+  const res = await fetch("/api/rate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ question, answer, history: priorTurns }),
+  });
+  if (!res.ok) throw new Error(`Rating failed (${res.status})`);
+  return res.json();
+}
+
+const RATING_HINT = {
+  Terrible: "wrong or gibberish",
+  Bad: "mostly wrong or garbled",
+  Solid: "gets the point across",
+  Good: "correct and clear",
+  Perfect: "exactly what was asked",
+};
+
+function ratingChip(rating) {
+  if (rating === "pending") return el("span", "rating pending", "Rating…");
+  const chip = el("span", `rating rating-${rating.label.toLowerCase()}`, rating.label);
+  chip.title = `Jev rates this answer ${rating.label} (${rating.score.toFixed(1)} of 4): ${RATING_HINT[rating.label]}`;
+  return chip;
+}
+
+function renderMeta(meta, { length, calls, ms, cost, done, rating, answerText, question }) {
   meta.innerHTML = "";
+  if (rating) meta.append(ratingChip(rating));
   const bar = el("span", "bar");
   const fill = el("i");
   fill.style.width = `${(length / MAX_LENGTH) * 100}%`;
@@ -130,8 +157,13 @@ async function ask(question) {
   let answer = "";
   let calls = 0;
   let cost = 0;
+  let rating = null;
+  let ms = 0;
   const text = () => answer.trim();
-  const stats = (done) => ({ length: answer.length, calls, ms: performance.now() - started, cost, done, answerText: text, question });
+  const stats = (done) => {
+    if (!done) ms = performance.now() - started; // the clock stops when the answer does
+    return { length: answer.length, calls, ms, cost, done, rating, answerText: text, question };
+  };
 
   try {
     while (answer.length < MAX_LENGTH) {
@@ -162,13 +194,28 @@ async function ask(question) {
   } finally {
     caret.remove();
     msg.classList.remove("typing");
+    stats(false);
     if (!answer) answerEl.remove();
     else history.push({ question, answer: answer.trim() });
+    if (answer.trim()) rating = "pending";
     renderMeta(meta, stats(true));
     controller = null;
     setBusy(false);
     refocus();
   }
+
+  // Once the answer is done, Jev grades it (with the same chat context it answered with).
+  if (rating !== "pending") return;
+  const myChat = chatId;
+  try {
+    const result = await fetchRating(question, answer.trim(), priorTurns);
+    rating = result;
+    cost += result.cost ?? 0;
+    if (myChat === chatId) addUsage(result.tokens, result.cost);
+  } catch {
+    rating = null; // a missing grade shouldn't get in the way of the answer
+  }
+  renderMeta(meta, stats(true));
 }
 
 function submit() {
@@ -203,6 +250,7 @@ function newChat() {
   controller?.abort();
   thread.innerHTML = "";
   history = [];
+  chatId++;
   chatUsage.tokens = 0;
   chatUsage.cost = 0;
   costMeter.hidden = true;

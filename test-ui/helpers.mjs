@@ -82,10 +82,13 @@ export async function openPage(browser, baseURL, { device } = {}) {
     leaks.push(`unrouted ${route.request().method()} ${route.request().url()}`);
     return route.abort();
   });
-  // Belt and braces: every /api/next response must come from the fake.
+  // Ratings are spoofed by default (free, "Good"); tests about ratings route their own.
+  await context.route("**/api/rate", (route) => fulfill(route, 200, DEFAULT_RATING));
+  // Belt and braces: every /api/* response must come from a fake.
   context.on("response", (response) => {
-    if (new URL(response.url()).pathname === "/api/next" && response.headers()[FAKE_HEADER] !== "1") {
-      leaks.push(`server answered /api/next (${response.status()})`);
+    const path = new URL(response.url()).pathname;
+    if (path.startsWith("/api/") && response.headers()[FAKE_HEADER] !== "1") {
+      leaks.push(`server answered ${path} (${response.status()})`);
     }
   });
 
@@ -105,6 +108,7 @@ const OPTION = { " ": "SPACE", "\n": "NEWLINE" };
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("");
 
 export const TOKENS_PER_CALL = 100;
+export const DEFAULT_RATING = { label: "Good", score: 3.1, tokens: 0, cost: 0 };
 export const COST_PER_CALL = 0.0001;
 
 function topFor(pick) {
@@ -157,6 +161,21 @@ export function scripted(text, { overrides = {}, gate = {} } = {}) {
     } catch {
       // The page aborted the fetch (Stop / New chat) while we were gated.
     }
+  };
+  handler.requests = requests;
+  return handler;
+}
+
+// Route handler for /api/rate returning `rating`; records request bodies.
+//   gate: Promise – hold the response until it resolves
+export function rated(rating, { gate } = {}) {
+  const requests = [];
+  const handler = async (route) => {
+    requests.push(route.request().postDataJSON());
+    if (gate) await gate;
+    try {
+      await fulfill(route, 200, rating);
+    } catch {}
   };
   handler.requests = requests;
   return handler;

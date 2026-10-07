@@ -323,6 +323,45 @@ main.empty .thread {
   height: 14px;
 }
 
+.rating {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 9px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  cursor: help;
+}
+
+.rating.pending {
+  color: var(--text-faint);
+  border-style: dashed;
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+.rating-terrible {
+  color: #e5776b;
+}
+
+.rating-bad {
+  color: #e0a35c;
+}
+
+.rating-solid {
+  color: #c9c3b5;
+}
+
+.rating-good {
+  color: #8fc37e;
+}
+
+.rating-perfect {
+  color: #6fd3b0;
+  background: rgba(111, 211, 176, 0.1);
+}
+
 .error {
   color: var(--danger);
   font-family: var(--sans);
