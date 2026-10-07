@@ -2,7 +2,7 @@ import { labelFor } from "../lib/jev.js";
 
 // A fake Jev. `prefer(option, answer)` returns a score per option; the fake turns those into
 // probabilities keyed by the real labels and records every request it sees.
-export function fakeJev(prefer, { done = 0, wordDone = 1 } = {}) {
+export function fakeJev(prefer, { done = 0, wordDone = 1, repeatOk = 0 } = {}) {
   const requests = [];
   const systemOne = async (request) => {
     requests.push(request);
@@ -13,6 +13,7 @@ export function fakeJev(prefer, { done = 0, wordDone = 1 } = {}) {
     const total = scores.reduce((a, b) => a + b, 0) || 1;
     const probabilities = Object.fromEntries(labels.map((l, i) => [l, scores[i] / total]));
     const answers = { next: { type: "choice", choice: labels[0], confidence: 0, probabilities } };
+    if (request.questions.repeat_ok) answers.repeat_ok = { type: "noul", noul: repeatOk };
     if (request.questions.word_done) answers.word_done = { type: "noul", noul: wordDone };
     if (request.questions.done) answers.done = { type: "noul", noul: typeof done === "function" ? done(answer) : done };
     return { model: "fake", answers, usage: { input_tokens: 0, output_tokens: 0 } };
