@@ -107,7 +107,12 @@
             them everyone's.
           </p>
           <textarea id="rock-lab-text" rows="4" maxlength="4000" spellcheck="false" aria-label="Rock instructions"></textarea>
+          <div class="rock-lab-request" id="rock-lab-request" hidden>
+            <pre id="rock-lab-request-json" tabindex="0" aria-label="The questions part of each Rock request"></pre>
+            <p>The <code>questions</code> part of every Rock request, with your current text. <code>END</code> is only offered once the answer has something in it.</p>
+          </div>
           <div class="rock-lab-actions">
+            <button type="button" class="btn" id="rock-lab-view" aria-pressed="false">Show full request</button>
             <button type="button" class="btn primary" id="rock-lab-save">Save for everyone</button>
             <button type="button" class="btn" id="rock-lab-revert">Discard my edits</button>
             <button type="button" class="btn" id="rock-lab-reset">Reset to default</button>

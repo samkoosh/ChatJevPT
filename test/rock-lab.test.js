@@ -59,7 +59,11 @@ test("admins read, save and reset Rock's instructions; others can't", async () =
   assert.equal((await rockApi.PUT(req("PUT", "/api/admin/rock", { cookie: friend, body: { instructions: "hi" } }))).status, 403);
 
   let data = await (await rockApi.GET(req("GET", "/api/admin/rock", { cookie: owner }))).json();
-  assert.deepEqual(data, { instructions: ROCK_INSTRUCTIONS, default: ROCK_INSTRUCTIONS, isDefault: true });
+  const { questions, ...rest } = data;
+  assert.deepEqual(rest, { instructions: ROCK_INSTRUCTIONS, default: ROCK_INSTRUCTIONS, isDefault: true });
+  assert.equal(questions.next.type, "choice");
+  assert.equal(questions.next.instructions, ROCK_INSTRUCTIONS);
+  assert.equal(Object.keys(questions.next.criteria).length, 47, "every option, END included");
 
   data = await (await rockApi.PUT(req("PUT", "/api/admin/rock", { cookie: owner, body: { instructions: "Spell like a pirate." } }))).json();
   assert.equal(data.instructions, "Spell like a pirate.");
@@ -110,4 +114,19 @@ test("with accounts off, Rock uses the default", async () => {
   } finally {
     Object.assign(process.env, saved);
   }
+});
+
+test("the lab's request view is exactly what Rock sends", async () => {
+  const owner = await signIn("owner@example.com");
+  await rockApi.PUT(req("PUT", "/api/admin/rock", { cookie: owner, body: { instructions: "Saved prompt." } }));
+  const { questions } = await (await rockApi.GET(req("GET", "/api/admin/rock", { cookie: owner }))).json();
+  const sent = [];
+  const systemOne = async (request) => {
+    sent.push(request.questions);
+    const labels = Object.keys(request.questions.next.criteria);
+    return { answers: { next: { type: "choice", probabilities: Object.fromEntries(labels.map((l) => [l, l === "B" ? 0.9 : 0.001])) } }, usage: { input_tokens: 1, output_tokens: 0 } };
+  };
+  forgetRockCache();
+  await next.handle(req("POST", "/api/next", { cookie: owner, body: { question: "Hi", answer: "A", level: "rock" } }), { systemOne });
+  assert.deepEqual(JSON.parse(JSON.stringify(sent[0])), questions);
 });

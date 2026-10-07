@@ -641,6 +641,34 @@ main:not(.empty) .composer-wrap {
   font: 13px/1.5 var(--mono);
 }
 
+.rock-lab textarea[hidden],
+.rock-lab-request[hidden] {
+  display: none;
+}
+
+.rock-lab-request pre {
+  margin: 0;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text-dim);
+  font: 12px/1.45 var(--mono);
+  white-space: pre;
+}
+
+.rock-lab-request p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.rock-lab-request code {
+  font-family: var(--mono);
+}
+
 .rock-lab-actions {
   display: flex;
   flex-wrap: wrap;

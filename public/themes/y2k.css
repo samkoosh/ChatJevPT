@@ -1280,3 +1280,15 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
   border: 2px outset #f0f0f0;
   color: #000;
 }
+
+[data-ui-theme="y2k"] .rock-lab-request pre {
+  background: #000;
+  color: #00ff66;
+  border: 2px inset #f0f0f0;
+  border-radius: 0;
+  font-family: "Courier New", monospace;
+}
+
+[data-ui-theme="y2k"] .rock-lab-request p {
+  color: #000;
+}

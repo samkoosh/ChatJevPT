@@ -1,7 +1,7 @@
 // The in-chat Rock lab (admins only). Every /api/* route is spoofed in the browser.
 import { after, afterEach, before, test } from "node:test";
 import assert from "node:assert/strict";
-import { ADMIN, fakeAccounts, fulfill, launchBrowser, openPage, ROCK_DEFAULT, scripted, startServer } from "./helpers.mjs";
+import { ADMIN, fakeAccounts, fulfill, launchBrowser, openPage, ROCK_CRITERIA, ROCK_DEFAULT, rockQuestionsFor, scripted, startServer } from "./helpers.mjs";
 
 const T = { timeout: 5_000 };
 let server;
@@ -38,7 +38,7 @@ async function open({ user = ADMIN, saved = ROCK_DEFAULT, device } = {}) {
           rock.puts.push(instructions);
           rock.saved = instructions ?? ROCK_DEFAULT;
         }
-        return fulfill(route, 200, { instructions: rock.saved, default: ROCK_DEFAULT, isDefault: rock.saved === ROCK_DEFAULT });
+        return fulfill(route, 200, { instructions: rock.saved, default: ROCK_DEFAULT, isDefault: rock.saved === ROCK_DEFAULT, questions: rockQuestionsFor(rock.saved) });
       });
     },
   });
@@ -135,4 +135,21 @@ test("the lab fits a phone, in both themes", async () => {
     session.assertNoLeaks();
     session = null;
   }
+});
+
+test("Show full request swaps the editor for the exact questions JSON, with the live draft", async () => {
+  const { page } = await open();
+  await page.locator("#rock-lab-toggle").click();
+  await page.waitForFunction((d) => document.getElementById("rock-lab-text").value === d, ROCK_DEFAULT, T);
+  await page.fill("#rock-lab-text", "Spell like a pirate.");
+  await page.click("#rock-lab-view");
+  assert.ok(await page.locator("#rock-lab-text").isHidden());
+  assert.equal(await page.locator("#rock-lab-view").textContent(), "Edit instructions");
+  const shown = JSON.parse(await page.locator("#rock-lab-request-json").textContent());
+  assert.deepEqual(shown, { next: { type: "choice", instructions: "Spell like a pirate.", criteria: ROCK_CRITERIA } });
+
+  await page.click("#rock-lab-view");
+  assert.ok(await page.locator("#rock-lab-text").isVisible());
+  assert.ok(await page.locator("#rock-lab-request").isHidden());
+  assert.equal(await page.locator("#rock-lab-text").inputValue(), "Spell like a pirate.", "the draft is untouched");
 });
