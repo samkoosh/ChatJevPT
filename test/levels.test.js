@@ -73,9 +73,10 @@ test("API: level and memory", async () => {
   process.env.JEV_MOCK = "1";
   try {
     const history = [{ question: "a", answer: "b" }];
-    const locked = await handle(post({ question: "Hi", answer: "", level: "post" }));
-    assert.equal(locked.status, 400);
-    assert.equal((await locked.json()).code, "level_locked");
+    const postLevel = recorder();
+    assert.equal((await handle(post({ question: "Hi", answer: "", level: "post", history }), postLevel)).status, 200);
+    assert.ok(postLevel.requests[0].questions.kind, "Post asks for the kind first");
+    assert.deepEqual(postLevel.requests[0].state.previous_turns, history);
     assert.equal((await handle(post({ question: "Hi", answer: "", level: "boulder" }))).status, 400);
 
     const rock = recorder();
@@ -109,7 +110,8 @@ test("saved turns keep their level and whether they were stopped", async () => {
   const base = { question: "Q", answer: "Hel", tokens: 1, cost: 0 };
   assert.equal(cleanTurn({ ...base, level: "rock", stopped: true }).level, "rock");
   assert.equal(cleanTurn({ ...base, level: "rock", stopped: true }).stopped, true);
-  assert.equal("level" in cleanTurn({ ...base, level: "post" }), false, "only playable levels");
+  assert.equal(cleanTurn({ ...base, level: "post" }).level, "post");
+  assert.equal("level" in cleanTurn({ ...base, level: "boulder" }), false, "only playable levels");
   assert.equal("stopped" in cleanTurn({ ...base, stopped: "yes" }), false, "only a real true");
   assert.equal("stopped" in cleanTurn(base), false);
 });

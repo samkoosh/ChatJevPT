@@ -119,7 +119,7 @@ const LEVEL_NAMES = { rock: "Rock", stump: "Stump", post: "Post" };
 const prefs = { level: "stump", memory: true };
 try {
   const level = localStorage.getItem("jev-level");
-  if (level === "rock" || level === "stump") prefs.level = level;
+  if (level in LEVEL_NAMES) prefs.level = level;
   if (localStorage.getItem("jev-memory") === "off") prefs.memory = false;
 } catch {}
 
@@ -146,7 +146,7 @@ function savePref(key, value) {
 
 for (const b of levelButtons) {
   b.addEventListener("click", () => {
-    if (b.disabled || b.dataset.level === "post") return;
+    if (b.disabled) return;
     prefs.level = b.dataset.level;
     savePref("jev-level", prefs.level);
     renderPrefs();
@@ -406,7 +406,7 @@ async function ask(question) {
     if (signedIn() && !savedChat) savedChat = await createChat(controller.signal);
     while (answer.length < MAX_LENGTH) {
       const step = await fetchNext(question, answer, priorTurns, controller.signal, savedChat, settings);
-      const { pick, char, top, tied, coinFlip, screened, cost: stepCost } = step;
+      const { pick, char, top, tied, coinFlip, screened, kinds, cost: stepCost } = step;
       tokens += step.tokens ?? 0;
       cost += stepCost ?? 0;
       addUsage(step.tokens, stepCost);
@@ -421,6 +421,7 @@ async function ask(question) {
       span.dataset.top = JSON.stringify(top);
       span.dataset.pick = pick;
       if (screened) span.dataset.screened = screened;
+      if (kinds) span.dataset.kinds = JSON.stringify(kinds);
       if (tied > 1) {
         span.classList.add("tied");
         span.dataset.tied = tied;
@@ -530,6 +531,8 @@ function newChat() {
 document.getElementById("new-chat").onclick = newChat;
 document.getElementById("new-chat-2").onclick = newChat;
 
+const KIND_NAMES = { LETTER: "letter", NUMBER: "number", SPACE: "space", NEWLINE: "line break", PUNCTUATION: "punctuation", END: "end" };
+
 // Hover (or tap) a letter to see what else Jev considered.
 function showTooltip(span) {
   const top = JSON.parse(span.dataset.top);
@@ -538,6 +541,11 @@ function showTooltip(span) {
   const tied = span.dataset.tied ? ` · ${span.dataset.tied}-way tie, ${how}` : "";
   const passed = span.dataset.screened;
   tooltip.append(el("h4", null, `Jev's top picks${tied}`));
+  if (span.dataset.kinds) {
+    // Post: round 1 picked the kind of character.
+    const kinds = JSON.parse(span.dataset.kinds).map(({ option, p }) => `${KIND_NAMES[option] ?? option} ${(p * 100).toFixed(0)}%`);
+    tooltip.append(el("p", "screen-note", `Kind: ${kinds.join(" · ")}`));
+  }
   if (passed) tooltip.append(el("p", "screen-note", passed === "1" ? "Only option to pass screening" : `${passed} options passed screening`));
   for (const { option, p } of top) {
     const row = el("div", `row${option === span.dataset.pick ? " picked" : ""}`);

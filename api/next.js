@@ -37,7 +37,7 @@ export async function handle(request, { systemOne } = {}) {
   const level = body.level ?? "stump";
   if (!LEVELS.includes(level)) return Response.json({ error: "Unknown model level." }, { status: 400 });
   if (!PLAYABLE_LEVELS.includes(level)) {
-    return Response.json({ error: "Post is still in development.", code: "level_locked" }, { status: 400 });
+    return Response.json({ error: "That level is locked.", code: "level_locked" }, { status: 400 });
   }
   const memory = body.memory !== false && level !== "rock";
   const noKey = missingKeyResponse();

@@ -1,14 +1,16 @@
-import { labelFor } from "../lib/jev.js";
+import { KINDS, kindLabel, labelFor } from "../lib/jev.js";
 
 // A fake Jev. `prefer(option, answer, choiceCall)` scores each option in the ranking Choice;
 // `screen(option, answer)` is each candidate's screening Noul (default: everything passes);
-// `sensible` answers the sense check. Records every request: all of them in `requests`, and
-// the screening, ranking and sense requests separately.
-export function fakeJev(prefer, { done = 0, wordDone = 1, repeatOk = 0, screen = () => 1, sensible = 1 } = {}) {
+// `sensible` answers the sense check; `kind(kind, answer, kindCall)` scores Post's kind Choice.
+// Records every request: all of them in `requests`, and the screening, ranking, sense and kind
+// requests separately.
+export function fakeJev(prefer, { done = 0, wordDone = 1, repeatOk = 0, screen = () => 1, sensible = 1, kind = () => 1 } = {}) {
   const requests = [];
   const screens = [];
   const choices = [];
   const senses = [];
+  const kinds = [];
   const systemOne = async (request) => {
     requests.push(request);
     const q = request.questions;
@@ -26,6 +28,9 @@ export function fakeJev(prefer, { done = 0, wordDone = 1, repeatOk = 0, screen =
       const total = scores.reduce((a, b) => a + b, 0) || 1;
       const probabilities = Object.fromEntries(labels.map((l, i) => [l, scores[i] / total]));
       answers.next = { type: "choice", choice: labels[0], confidence: 0, probabilities };
+    } else if (q.kind) {
+      kinds.push(request);
+      answers.kind = { type: "choice", probabilities: distribution(Object.keys(q.kind.criteria), (l) => kind(KINDS.find((k) => kindLabel(k) === l), answer, kinds.length)) };
     } else {
       screens.push(request);
       for (const [k, question] of Object.entries(q)) {
@@ -37,7 +42,13 @@ export function fakeJev(prefer, { done = 0, wordDone = 1, repeatOk = 0, screen =
     if (q.done) answers.done = { type: "noul", noul: typeof done === "function" ? done(answer) : done };
     return { model: "fake", answers, usage: { input_tokens: 0, output_tokens: 0 } };
   };
-  return { systemOne, requests, screens, choices, senses };
+  return { systemOne, requests, screens, choices, senses, kinds };
+}
+
+function distribution(labels, score) {
+  const scores = labels.map((l) => Math.max(0, score(l)));
+  const total = scores.reduce((a, b) => a + b, 0) || 1;
+  return Object.fromEntries(labels.map((l, i) => [l, scores[i] / total]));
 }
 
 const ALL = [
