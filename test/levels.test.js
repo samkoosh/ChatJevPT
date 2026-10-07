@@ -26,7 +26,7 @@ test("Rock: one Choice over every character, with only the question and the answ
   const jev = recorder("B");
   const r = await rockCharacter("What color is the sky?", "", jev);
   assert.equal(jev.requests.length, 1);
-  assert.deepEqual(jev.requests[0].state, { question: "What color is the sky?", answer_so_far: "", characters_remaining: 200 });
+  assert.deepEqual(jev.requests[0].state, { question: "What color is the sky?", answer_so_far: "", characters_available: 200 });
   const criteria = jev.requests[0].questions.next.criteria;
   const labels = Object.keys(criteria);
   for (const o of ["A", "Z", "0", "9", " ", "NEWLINE", ".", "?", "'", "-"]) assert.ok(labels.includes(o), JSON.stringify(o));
@@ -45,7 +45,7 @@ test("Rock offers END once something is written, and has no other rules", async 
   const r = await rockCharacter("q", "zzq ", jev);
   const criteria = jev.requests[0].questions.next.criteria;
   assert.equal(criteria[END], "The end of the answer, used to immediately stop generation. Use when the answer is satisfactory and complete.");
-  assert.equal(jev.requests[0].state.characters_remaining, 196);
+  assert.equal(jev.requests[0].state.characters_available, 196);
   assert.equal(r.pick, "SPACE", "the space label maps back to a space");
   assert.equal(r.char, " ", "double spaces are fine for a rock");
 });
@@ -81,7 +81,7 @@ test("API: level and memory", async () => {
     const rock = recorder();
     assert.equal((await handle(post({ question: "Hi", answer: "", level: "rock", history }), rock)).status, 200);
     assert.equal(rock.requests.length, 1);
-    assert.deepEqual(Object.keys(rock.requests[0].state), ["question", "answer_so_far", "characters_remaining"]);
+    assert.deepEqual(Object.keys(rock.requests[0].state), ["question", "answer_so_far", "characters_available"]);
 
     const forgetful = recorder();
     await handle(post({ question: "Hi", answer: "", memory: false, history }), forgetful);
