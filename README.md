@@ -193,9 +193,13 @@ allowance ($0.25 by default) and up to 5 saved chats.
 - Every Jev call checks the person's allowance first and charges the actual tokens and cost afterwards.
   The allowance is a lifetime total ($0.25 unless you set theirs on the admin page; it doesn't reset).
   Once it's used, they see "Allowance used up" and can ask you for more.
+- **Preview as non-admin**: admins can switch the page (avatar menu) to look the way it does for a
+  regular person: no Admin link or Rock lab, usage against the $0.25 allowance, the 5-chat limit, and a
+  banner with "Exit preview". It's only a view; the server still treats them as an admin.
 - **Admins have no budget limit.** Everyone with role admin, including everyone in `ADMIN_EMAILS`, is
   never blocked; their usage is still recorded and shown ("Usage: $X total · no limit").
-- **Saved chats**: signed-in people get a sidebar with up to 5 chats (50 questions each). The server
+- **Saved chats**: signed-in people get a sidebar with up to 5 chats (50 questions each); admins have
+  no chat limit. The server
   keeps the history: requests send a `chatId` and the server uses that chat's last 6 turns, ignoring any
   history from the browser.
 - Writes (POST/PUT/DELETE) must come from the page itself: same `Origin` and a JSON content type,

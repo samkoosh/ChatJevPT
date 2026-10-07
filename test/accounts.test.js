@@ -224,6 +224,7 @@ describe("allowlist", () => {
       authEnabled: true,
       user: { email: "friend@example.com", name: "Friend", picture: "https://example.com/p.png", role: "user" },
       usage: { totalCostMicros: 0, totalTokens: 0, budgetMicros: 250_000 },
+      limits: { chats: 5 },
     });
     const meRes = await me.GET(req("GET", "/api/me", { cookie: cookie.split(";")[0] }));
     assert.deepEqual(await json(meRes), body);
@@ -645,5 +646,37 @@ describe("admin", () => {
       assert.equal((await post(cookie, body)).status, 400, JSON.stringify(body));
     }
     assert.equal((await post(cookie, { email: "owner@example.com", status: "blocked" })).status, 400, "can't block yourself");
+  });
+});
+
+describe("admin limits and the non-admin preview", () => {
+  test("admins can keep more than 5 chats; regular people can't", async () => {
+    const owner = await addUser("owner@example.com");
+    await getStore().signIn({ email: "owner@example.com", googleSub: null, name: "Owner", picture: null }, { admin: true });
+    for (let i = 0; i < 7; i++) {
+      assert.equal((await chats.POST(req("POST", "/api/chats", { cookie: owner, body: {} }))).status, 201, `admin chat ${i + 1}`);
+    }
+    const list = await json(await chats.GET(req("GET", "/api/chats", { cookie: owner })));
+    assert.equal(list.chats.length, 7);
+    assert.equal(list.max, null);
+
+    const friend = await addUser("friend@example.com");
+    for (let i = 0; i < 5; i++) await chats.POST(req("POST", "/api/chats", { cookie: friend, body: {} }));
+    const sixth = await chats.POST(req("POST", "/api/chats", { cookie: friend, body: {} }));
+    assert.equal(sixth.status, 409);
+    assert.equal((await json(await chats.GET(req("GET", "/api/chats", { cookie: friend })))).max, 5);
+  });
+
+  test("admins' /api/me has no limits, plus the regular limits for previewing", async () => {
+    const owner = await addUser("owner@example.com");
+    await getStore().signIn({ email: "owner@example.com", googleSub: null, name: "Owner", picture: null }, { admin: true });
+    const body = await json(await me.GET(req("GET", "/api/me", { cookie: owner })));
+    assert.deepEqual(body.limits, { chats: null });
+    assert.equal(body.usage.budgetMicros, null);
+    assert.deepEqual(body.regular, { budgetMicros: 250_000, chats: 5 });
+
+    const friend = await addUser("friend@example.com");
+    const theirs = await json(await me.GET(req("GET", "/api/me", { cookie: friend })));
+    assert.equal("regular" in theirs, false);
   });
 });

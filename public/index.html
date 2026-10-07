@@ -39,7 +39,7 @@
         </button>
       </span>
       <ul class="chat-list" id="chat-list"></ul>
-      <p class="sidebar-note">Your last 5 chats are saved to your account.</p>
+      <p class="sidebar-note" id="sidebar-note">Your last 5 chats are saved to your account.</p>
     </aside>
     <div class="sidebar-scrim" id="sidebar-scrim" hidden></div>
 
@@ -66,10 +66,16 @@
             <div class="usage-bar" id="usage-bar"><i id="usage-fill"></i></div>
           </div>
           <a class="account-menu-item" id="admin-link" href="/admin.html" hidden>Admin</a>
+          <button class="account-menu-item" id="preview-toggle" hidden>Preview as non-admin</button>
           <button class="account-menu-item" id="sign-out">Sign out</button>
         </div>
       </div>
     </header>
+
+    <div class="preview-banner" id="preview-banner" role="status" hidden>
+      <span>Previewing as a regular person: no admin tools, $0.25 allowance, 5 chats.</span>
+      <button type="button" id="preview-exit">Exit preview</button>
+    </div>
 
     <main id="main" class="empty">
       <section class="hero" id="hero">
