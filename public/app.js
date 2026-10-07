@@ -10,11 +10,18 @@ const tooltip = document.getElementById("tooltip");
 let controller = null; // AbortController for the answer being written
 let history = []; // finished turns in this chat, sent so Jev can follow up
 const chatUsage = { tokens: 0, cost: 0 };
-let chatId = 0; // bumped by New chat, so late ratings don't count toward the new chat's cost
+let chatEpoch = 0; // bumped by New chat, so late ratings don't count toward the new chat's cost
 const costMeter = document.getElementById("cost-meter");
 
 // Theme hooks: public/theme.js listens for these (Y2K sound effects).
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }));
+// Accounts, only when the server has them turned on (see /api/me). Signed in, chats are saved
+// and the server reads a chat's history itself, so requests carry its id instead.
+const MAX_CHATS = 5;
+let me = { authEnabled: false };
+let chats = []; // the signed-in person's saved chats, newest first
+let activeChatId = null; // saved chat on screen; null = a new chat, saved on its first question
+const signedIn = () => Boolean(me.user);
 
 const formatCost = (cost) => (cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`);
 const formatTokens = (n) => (n < 1000 ? `${n}` : `${(n / 1000).toFixed(n < 10000 ? 1 : 0)}k`);
@@ -24,6 +31,14 @@ function addUsage(tokens = 0, cost = 0) {
   chatUsage.cost += cost;
   costMeter.hidden = chatUsage.tokens === 0;
   costMeter.innerHTML = `<span class="cost-label">This chat: </span><b>${formatCost(chatUsage.cost)}</b> · ${formatTokens(chatUsage.tokens)} tokens`;
+}
+
+// Counts a Jev call toward this month's usage in the account menu (the server charges it too).
+function bill(tokens = 0, cost = 0) {
+  if (!me.usage) return;
+  me.usage.monthCostMicros += Math.round(cost * 1e6);
+  me.usage.monthTokens += tokens;
+  renderUsage();
 }
 
 // On touch devices, Enter inserts a newline and we don't refocus the input,
@@ -60,26 +75,27 @@ function scrollToBottom() {
   if (nearBottom) window.scrollTo({ top: document.body.scrollHeight });
 }
 
-async function fetchNext(question, answer, priorTurns, signal) {
-  const res = await fetch("/api/next", {
-    method: "POST",
+async function api(method, path, body, signal) {
+  const res = await fetch(path, {
+    method,
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ question, answer, history: priorTurns }),
+    body: body === undefined ? undefined : JSON.stringify(body),
     signal,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { code: data.code });
+  if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { code: data.code, status: res.status });
   return data;
 }
 
-async function fetchRating(question, answer, priorTurns) {
-  const res = await fetch("/api/rate", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ question, answer, history: priorTurns }),
-  });
-  if (!res.ok) throw new Error(`Rating failed (${res.status})`);
-  return res.json();
+// A saved chat sends its id; the server ignores client history then.
+const context = (priorTurns, savedChat) => (savedChat ? { chatId: savedChat } : { history: priorTurns });
+
+function fetchNext(question, answer, priorTurns, signal, savedChat) {
+  return api("POST", "/api/next", { question, answer, ...context(priorTurns, savedChat) }, signal);
+}
+
+function fetchRating(question, answer, priorTurns, savedChat) {
+  return api("POST", "/api/rate", { question, answer, ...context(priorTurns, savedChat) });
 }
 
 const RATING_HINT = {
@@ -118,7 +134,10 @@ function renderMeta(meta, { length, ms, cost, done, rating, answerText, question
     meta.append(halt);
     return;
   }
+  appendActions(meta, answerText, question);
+}
 
+function appendActions(meta, answerText, question) {
   const copy = el("button", "act");
   copy.innerHTML = `${icon('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>')}Copy`;
   copy.onclick = async () => {
@@ -145,16 +164,25 @@ function spicyNotice() {
   return notice;
 }
 
-function creditsNotice(message) {
-  const notice = el("div", "notice");
+// Errors that get a notice instead of a plain error line.
+const NOTICES = {
+  out_of_credits: "Out of Jev credits",
+  budget_exhausted: "Monthly budget used",
+  chat_limit: "Chat limit reached",
+  chat_full: "This chat is full",
+};
+
+function errorNotice(code, message) {
+  const notice = el("div", `notice notice-${code.replace(/_/g, "-")}`);
   notice.innerHTML = icon('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.3"/>');
   const text = el("div");
-  text.append(el("strong", null, "Out of Jev credits"), el("p", null, message));
+  text.append(el("strong", null, NOTICES[code]), el("p", null, message));
   notice.append(text);
   return notice;
 }
 
 async function ask(question) {
+  if (me.authEnabled && !signedIn()) return showSignIn();
   main.classList.remove("empty");
   thread.append(el("div", "msg-user", question));
   emit("jev:send");
@@ -177,8 +205,12 @@ async function ask(question) {
   setBusy(true);
   const started = performance.now();
   const priorTurns = history.slice(-6);
+  const myChat = chatEpoch;
+  let savedChat = signedIn() ? activeChatId : null;
+  let lostSession = null;
   let answer = "";
   let spicy = false;
+  let tokens = 0;
   let cost = 0;
   let rating = null;
   let ms = 0;
@@ -189,11 +221,14 @@ async function ask(question) {
   };
 
   try {
+    if (signedIn() && !savedChat) savedChat = await createChat(controller.signal);
     while (answer.length < MAX_LENGTH) {
-      const step = await fetchNext(question, answer, priorTurns, controller.signal);
-      const { pick, char, top, tied, coinFlip, screened, tokens, cost: stepCost } = step;
+      const step = await fetchNext(question, answer, priorTurns, controller.signal, savedChat);
+      const { pick, char, top, tied, coinFlip, screened, cost: stepCost } = step;
+      tokens += step.tokens ?? 0;
       cost += stepCost ?? 0;
-      addUsage(tokens, stepCost);
+      addUsage(step.tokens, stepCost);
+      bill(step.tokens, stepCost);
       thinking.remove();
       if (pick === "END") {
         if (step.spicy) spicy = true;
@@ -217,7 +252,8 @@ async function ask(question) {
     }
   } catch (err) {
     thinking.remove();
-    if (err.code === "out_of_credits") body.insertBefore(creditsNotice(err.message), meta);
+    if (err.status === 401 || err.code === "blocked") lostSession = err;
+    else if (NOTICES[err.code]) body.insertBefore(errorNotice(err.code, err.message), meta);
     else if (err.name !== "AbortError") body.insertBefore(el("div", "error", err.message), meta);
     if (err.name !== "AbortError") emit("jev:error");
   } finally {
@@ -235,17 +271,29 @@ async function ask(question) {
     refocus();
   }
 
+  if (lostSession) return endSession(lostSession.code === "blocked" ? lostSession.message : "Your session ended. Sign in again.");
+
+  // Signed in, the finished turn is saved to its chat, then its rating once Jev gives one.
+  const saved = savedChat && answer.trim() ? saveTurn(savedChat, { question, answer: answer.trim(), tokens, cost }) : null;
+
   // Once the answer is done, Jev grades it (with the same chat context it answered with).
   if (rating !== "pending") return;
-  const myChat = chatId;
   try {
-    const result = await fetchRating(question, answer.trim(), priorTurns);
+    const result = await fetchRating(question, answer.trim(), priorTurns, savedChat);
     rating = result;
     emit("jev:rated", result.label);
+    tokens += result.tokens ?? 0;
     cost += result.cost ?? 0;
-    if (myChat === chatId) addUsage(result.tokens, result.cost);
-  } catch {
+    bill(result.tokens, result.cost);
+    if (myChat === chatEpoch) addUsage(result.tokens, result.cost);
+    const index = await saved;
+    if (index != null) {
+      const patch = { label: result.label, score: result.score, index, tokens, cost };
+      api("PUT", `/api/chats/${savedChat}`, { lastTurnRating: patch }).catch(() => {});
+    }
+  } catch (err) {
     rating = null; // a missing grade shouldn't get in the way of the answer
+    if (err.status === 401) endSession("Your session ended. Sign in again.");
   }
   renderMeta(meta, stats(true));
 }
@@ -278,15 +326,22 @@ document.getElementById("suggestions").addEventListener("click", (event) => {
   ask(button.textContent);
 });
 
-function newChat() {
+function clearThread() {
   controller?.abort();
   thread.innerHTML = "";
   history = [];
-  chatId++;
+  chatEpoch++;
   chatUsage.tokens = 0;
   chatUsage.cost = 0;
   costMeter.hidden = true;
   main.classList.add("empty");
+}
+
+function newChat() {
+  clearThread();
+  activeChatId = null;
+  if (signedIn()) renderChats();
+  setDrawer(false);
   refocus();
 }
 document.getElementById("new-chat").onclick = newChat;
@@ -337,3 +392,327 @@ document.addEventListener("pointerdown", (event) => {
   if (!event.target.closest(".ch")) hideTooltip();
 });
 window.addEventListener("scroll", hideTooltip, { passive: true });
+
+// --- Accounts: sign-in, saved chats, usage ---------------------------------------------------
+
+const page = document.body;
+const chatList = document.getElementById("chat-list");
+const sidebarNew = document.getElementById("sidebar-new");
+const signin = document.getElementById("signin");
+const signinMessage = document.getElementById("signin-message");
+const accountMenu = document.getElementById("account-menu");
+const accountBtn = document.getElementById("account-btn");
+const narrow = window.matchMedia("(max-width: 760px)");
+const GSI_SRC = "https://accounts.google.com/gsi/client";
+const LIMIT_TITLE = `You can keep up to ${MAX_CHATS} chats. Delete one to start another.`;
+const ENDED = "Your session ended. Sign in again.";
+
+const formatUsd = (micros) => (micros > 0 && micros < 10000 ? formatCost(micros / 1e6) : `$${(micros / 1e6).toFixed(2)}`);
+
+function ago(iso) {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 7 * 86400) return `${Math.floor(s / 86400)}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function applyAccount() {
+  const out = me.authEnabled && !signedIn();
+  page.classList.toggle("signed-out", out);
+  page.classList.toggle("signed-in", signedIn());
+  signin.hidden = !out;
+  input.disabled = out;
+  for (const id of ["account", "sidebar", "sidebar-toggle"]) document.getElementById(id).hidden = !signedIn();
+  if (!signedIn()) return closeMenu();
+  const { email, name, picture, role } = me.user;
+  accountBtn.innerHTML = "";
+  const initial = el("span", "account-initial", (name || email).trim()[0].toUpperCase());
+  if (picture) {
+    const img = el("img");
+    img.alt = "";
+    img.referrerPolicy = "no-referrer";
+    img.src = picture;
+    img.onerror = () => img.replaceWith(initial);
+    accountBtn.append(img);
+  } else {
+    accountBtn.append(initial);
+  }
+  accountBtn.title = email;
+  document.getElementById("account-name").textContent = name || "";
+  document.getElementById("account-email").textContent = email;
+  document.getElementById("admin-link").hidden = role !== "admin";
+  renderUsage();
+}
+
+// Admins have no budget (budgetMicros null): just the month's spend, no bar.
+function renderUsage() {
+  if (!me.usage) return;
+  const { monthCostMicros, budgetMicros } = me.usage;
+  const unlimited = budgetMicros == null;
+  document.getElementById("usage-text").textContent = unlimited
+    ? `Usage: ${formatUsd(monthCostMicros)} this month · no limit`
+    : `Usage: ${formatUsd(monthCostMicros)} of ${formatUsd(budgetMicros)} this month`;
+  document.getElementById("usage-bar").hidden = unlimited;
+  if (unlimited) return;
+  const share = budgetMicros > 0 ? Math.min(1, monthCostMicros / budgetMicros) : 1;
+  const fill = document.getElementById("usage-fill");
+  fill.style.width = `${share * 100}%`;
+  fill.classList.toggle("full", share >= 1);
+}
+
+// Signed out (or the session ended): the sign-in card replaces the composer.
+let gsiReady = null;
+function loadGsi() {
+  gsiReady ??= new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = GSI_SRC;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = () => {
+      gsiReady = null;
+      reject(new Error("Couldn't load Google sign-in"));
+    };
+    document.head.append(script);
+  });
+  return gsiReady;
+}
+
+function setSigninMessage(title, text) {
+  signinMessage.innerHTML = "";
+  signinMessage.hidden = !title;
+  if (!title) return;
+  signinMessage.append(el("strong", null, title));
+  if (text) signinMessage.append(el("p", null, text));
+}
+
+let gsiInitialized = false;
+async function showSignIn(message) {
+  if (!me.authEnabled) return;
+  applyAccount();
+  setSigninMessage(message || "");
+  document.getElementById("dev-login").hidden = !me.devLogin;
+  if (!me.googleClientId) return;
+  try {
+    await loadGsi();
+    if (!gsiInitialized) {
+      window.google.accounts.id.initialize({ client_id: me.googleClientId, callback: onCredential });
+      gsiInitialized = true;
+    }
+    const target = document.getElementById("gsi-button");
+    target.innerHTML = "";
+    window.google.accounts.id.renderButton(target, { theme: "filled_black", shape: "pill", size: "large", text: "signin_with" });
+  } catch {
+    setSigninMessage("Couldn't load Google sign-in.", "Check your connection, or allow accounts.google.com, then reload.");
+  }
+}
+
+async function signInWith(path, payload) {
+  setSigninMessage("");
+  try {
+    me = { ...(await api("POST", path, payload)), googleClientId: me.googleClientId, devLogin: me.devLogin };
+  } catch (err) {
+    if (err.code === "not_invited") return setSigninMessage("Request sent — the owner will let you in", err.message);
+    return setSigninMessage(err.message);
+  }
+  applyAccount();
+  loadChats();
+  refocus();
+}
+
+const onCredential = ({ credential }) => signInWith("/api/auth/google", { credential });
+document.getElementById("dev-login").onclick = () => signInWith("/api/auth/dev", {});
+
+function endSession(message) {
+  me = { authEnabled: true, googleClientId: me.googleClientId, devLogin: me.devLogin };
+  chats = [];
+  newChat();
+  showSignIn(message);
+}
+
+document.getElementById("sign-out").onclick = async () => {
+  await api("POST", "/api/logout", {}).catch(() => {});
+  window.google?.accounts?.id?.disableAutoSelect?.();
+  endSession();
+};
+
+// Account menu
+function closeMenu() {
+  accountMenu.hidden = true;
+  accountBtn.setAttribute("aria-expanded", "false");
+}
+accountBtn.onclick = async () => {
+  if (!accountMenu.hidden) return closeMenu();
+  accountMenu.hidden = false;
+  accountBtn.setAttribute("aria-expanded", "true");
+  try {
+    const fresh = await api("GET", "/api/me");
+    if (fresh.user) {
+      me = { ...me, ...fresh };
+      renderUsage();
+    }
+  } catch {}
+};
+document.addEventListener("pointerdown", (event) => {
+  if (!event.target.closest("#account")) closeMenu();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  closeMenu();
+  setDrawer(false);
+});
+
+// Saved chats sidebar: a collapsible column on wide screens, an overlay drawer on phones.
+function setDrawer(open) {
+  page.classList.toggle("drawer-open", open && narrow.matches);
+  document.getElementById("sidebar-scrim").hidden = !(open && narrow.matches);
+}
+document.getElementById("sidebar-toggle").onclick = () => {
+  if (narrow.matches) setDrawer(!page.classList.contains("drawer-open"));
+  else page.classList.toggle("sidebar-collapsed");
+};
+document.getElementById("sidebar-close").onclick = () => {
+  if (narrow.matches) setDrawer(false);
+  else page.classList.add("sidebar-collapsed");
+};
+document.getElementById("sidebar-scrim").onclick = () => setDrawer(false);
+narrow.addEventListener("change", () => setDrawer(false));
+sidebarNew.onclick = newChat;
+
+function renderChats() {
+  chatList.innerHTML = "";
+  for (const chat of chats) {
+    const title = chat.title || "New chat";
+    const item = el("li", `chat-item${chat.id === activeChatId ? " active" : ""}`);
+    item.dataset.id = chat.id;
+    const open = el("button", "chat-open");
+    open.append(el("span", "chat-title", title), el("span", "chat-time", ago(chat.updatedAt)));
+    open.onclick = () => openChat(chat.id);
+    const remove = el("button", "chat-delete");
+    remove.innerHTML = icon('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>');
+    remove.title = "Delete chat";
+    remove.setAttribute("aria-label", `Delete ${title}`);
+    remove.onclick = () => deleteChat(chat);
+    item.append(open, remove);
+    chatList.append(item);
+  }
+  if (!chats.length) chatList.append(el("li", "chat-empty", "No saved chats yet. Ask something to start one."));
+  document.getElementById("chat-count").textContent = `${chats.length}/${MAX_CHATS}`;
+  const full = chats.length >= MAX_CHATS;
+  sidebarNew.disabled = full;
+  document.getElementById("sidebar-new-wrap").title = full ? LIMIT_TITLE : "";
+}
+
+function upsertChat(summary) {
+  chats = [summary, ...chats.filter((c) => c.id !== summary.id)];
+  renderChats();
+}
+
+async function loadChats() {
+  try {
+    chats = (await api("GET", "/api/chats")).chats;
+  } catch (err) {
+    if (err.status === 401) return endSession(ENDED);
+  }
+  renderChats();
+}
+
+// A new chat is saved lazily, on its first question; its title comes from that question.
+async function createChat(signal) {
+  const { chat } = await api("POST", "/api/chats", {}, signal);
+  if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+  activeChatId = chat.id;
+  upsertChat(chat);
+  return chat.id;
+}
+
+// Saves a finished turn; resolves to its index in the chat (or null if it couldn't be saved).
+async function saveTurn(id, turn) {
+  try {
+    const { chat } = await api("PUT", `/api/chats/${id}`, { turn });
+    upsertChat(chat);
+    return chat.turnCount - 1;
+  } catch {
+    return null;
+  }
+}
+
+async function openChat(id) {
+  setDrawer(false);
+  if (id === activeChatId && !controller) return;
+  let chat;
+  try {
+    ({ chat } = await api("GET", `/api/chats/${id}`));
+  } catch (err) {
+    if (err.status === 401) return endSession(ENDED);
+    if (err.status === 404) chats = chats.filter((c) => c.id !== id);
+    return renderChats();
+  }
+  clearThread();
+  activeChatId = chat.id;
+  for (const turn of chat.turns) {
+    thread.append(el("div", "msg-user", turn.question), savedAnswer(turn));
+    history.push({ question: turn.question, answer: turn.answer });
+    addUsage(turn.tokens ?? 0, turn.cost ?? 0);
+  }
+  if (chat.turns.length) main.classList.remove("empty");
+  renderChats();
+  window.scrollTo({ top: document.body.scrollHeight });
+  refocus();
+}
+
+// A past answer from a saved chat: plain text with its rating, no per-letter details.
+function savedAnswer(turn) {
+  const msg = el("div", "msg-jev saved");
+  msg.innerHTML = `<svg class="spark avatar" viewBox="0 0 24 24" aria-hidden="true"><use href="#spark"/></svg>`;
+  const content = el("div");
+  const meta = el("div", "meta");
+  if (turn.label && typeof turn.score === "number") meta.append(ratingChip(turn));
+  const length = turn.answer.length;
+  meta.append(el("span", null, `${length} character${length === 1 ? "" : "s"}`));
+  if (typeof turn.cost === "number") meta.append(el("span", null, formatCost(turn.cost)));
+  appendActions(meta, () => turn.answer, turn.question);
+  content.append(el("div", "answer", turn.answer), meta);
+  msg.append(content);
+  return msg;
+}
+
+async function deleteChat(chat) {
+  if (!window.confirm(`Delete "${chat.title || "New chat"}"? This can't be undone.`)) return;
+  try {
+    await api("DELETE", `/api/chats/${chat.id}`);
+  } catch (err) {
+    if (err.status === 401) return endSession(ENDED);
+    if (err.status !== 404) return;
+  }
+  chats = chats.filter((c) => c.id !== chat.id);
+  if (chat.id === activeChatId) newChat();
+  else renderChats();
+}
+
+// Accounts are optional: with them off, /api/me says so and the page stays an open demo.
+async function init() {
+  let data;
+  try {
+    const res = await fetch("/api/me");
+    data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (data.code !== "auth_misconfigured") return;
+      me = { authEnabled: true };
+      applyAccount();
+      return setSigninMessage("Sign-in isn't working yet.", data.error);
+    }
+  } catch {
+    return;
+  }
+  me = data;
+  if (!me.authEnabled) return;
+  if (signedIn()) {
+    applyAccount();
+    loadChats();
+  } else {
+    showSignIn();
+  }
+}
+init();
