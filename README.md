@@ -15,7 +15,7 @@ also stop early once the answer is complete. The answer types out live in a dark
 
 ## Features
 
-- **Live, letter-by-letter answers** with a running counter of characters, Jev calls and time.
+- **Live, letter-by-letter answers** with a progress bar and a Stop button while typing.
 - **See inside the "model"**: hover (or tap, on mobile) any letter to see Jev's top five candidates and
   their probabilities. Characters that won a tie are underlined.
 - **Follow-up questions**: earlier turns in the chat are sent along, so "What about Germany?" after
@@ -51,18 +51,26 @@ browser (public/app.js)                    Vercel function (api/next.js)        
 
 ### What Jev is asked, per character
 
-One request with up to three questions about the same state (`question`, `answer_so_far`,
-`characters_remaining`, and `previous_turns` for follow-ups):
+Two rounds, still one character per step:
 
-- **`next`, a Choice.** Each option's label is the text it would produce, like `"The sky is blu…"`,
-  not a bare letter. In testing, Jev treated labels like `A` and `B` as multiple-choice letters and
-  picked them regardless of meaning. Option order is shuffled every call for the same reason.
-  Each letter's description also names real words it leads to, e.g.
-  `Continue the word as "blu" (as in: blue, blues, bluff)`, so Jev can see which spelling reaches the
-  word it means.
-- **`done`, a Noul.** "Does the answer already fully answer the question?" Above 0.6, the answer stops.
-- **`word_done`, a Noul**, while a short word (4 letters or less) is being spelled: "Is `be` a finished
-  word here?" If not, ending the word is masked out, so "Be…" can still become "Berlin".
+1. **Screening** (one parallel request of Nouls): every candidate character gets its own yes/no question, "is
+   this still heading toward a sensible answer?", shown as the text it would produce. Alongside it:
+   - **`done`**: "Does the answer already fully answer the question?" Above 0.6, the answer stops.
+   - **`word_done`**, while a short word (4 letters or less) is being spelled: "Is `be` a finished word
+     here?" If not, ending the word is masked out, so "Be…" can still become "Berlin".
+   - **`repeat_ok`**, when the answer starts repeating itself: "Does the question ask for repetition?"
+     If not, a repeating word can't be finished ("say duck 6 times" still works).
+   - **The sense check**, after each finished word, as a separate request that sees only the answer
+     text (no question or chat): "Does this make sense so far?" Below 0.35 the answer stops with a
+     "Jev got too spicy" notice, unless the question asked for repetition.
+
+   Candidates scoring 0.3 or more pass (at least the best 2 always do). If only one option exists, it's
+   picked without a ranking call. Both thresholds live at the top of the screening code in `lib/jev.js`.
+2. **Ranking**, a Choice over the survivors. Each option's label is the text it would produce, like
+   `"The sky is blu…"`, not a bare letter: Jev treated labels like `A` and `B` as multiple-choice letters
+   and picked them regardless of meaning. Option order is shuffled every call for the same reason. Each
+   letter's description names real words it leads to, e.g. `Continue the word as "blu" (as in: blue,
+   blues, bluff)`.
 
 Ties in `next` go to up to two runoff Choices between only the tied options. A coin flip only happens
 if they're still tied after that.
@@ -128,7 +136,8 @@ npm run dev:mock
 
 ## Cost
 
-Each answer is up to 200 Jev calls, one per character (plus a runoff call when letters tie). Every call
+Each character takes about two Jev requests (screening, then ranking; plus a sense check after each word
+and a runoff when letters tie), and each answer one more for its rating. Every request
 sends the question and the answer so far, so it's small: a whole answer costs a fraction of a cent at
 TypeSafe's list price ($0.042 per million input tokens; output is free). The header's cost meter shows
 the running total. The

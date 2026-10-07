@@ -393,6 +393,15 @@ main.empty .thread {
   font-weight: 600;
 }
 
+.notice.spicy {
+  border-color: rgba(229, 119, 107, 0.45);
+  background: rgba(229, 119, 107, 0.1);
+}
+
+.notice.spicy svg {
+  color: var(--danger);
+}
+
 .notice p {
   margin: 2px 0 0;
   color: var(--text-dim);
@@ -549,6 +558,12 @@ main:not(.empty) .composer-wrap {
   margin: 0 0 8px;
   font-weight: 500;
   color: var(--text-dim);
+}
+
+.tooltip .screen-note {
+  margin: -4px 0 8px;
+  font-size: 11.5px;
+  color: var(--text-faint);
 }
 
 .tooltip .row {

@@ -100,8 +100,9 @@ describe("desktop", () => {
     assert.ok(!(await page.locator("#hero").isVisible()), "hero hidden once chatting");
 
     const meta = await page.locator(".meta").innerText();
-    assert.match(meta, /5\/200/);
-    assert.match(meta, /6 Jev calls/);
+    assert.match(meta, /\b5 characters/, "finished answers show just the count");
+    assert.doesNotMatch(meta, /\/200|Jev call/);
+    assert.equal(await page.locator(".meta .bar").count(), 0, "progress bar gone once finished");
     assert.deepEqual(await page.locator(".meta .act").allInnerTexts(), ["Copy", "Retry"]);
 
     // One request per character plus the END call; answer grows each time.
@@ -253,7 +254,7 @@ describe("desktop", () => {
     assert.equal(await answerText(page), "Hel");
     assert.equal(await page.locator(".caret").count(), 0);
     assert.equal(await page.locator(".error").count(), 0, "abort is not an error");
-    assert.match(await page.locator(".meta").innerText(), /3\/200/);
+    assert.match(await page.locator(".meta").innerText(), /\b3 characters/);
     assert.equal(await send.getAttribute("aria-label"), "Send");
     assert.ok(await send.isDisabled());
     // Nothing further was requested after the stop.
@@ -342,6 +343,53 @@ describe("desktop", () => {
     assert.equal(await page.locator(".msg-user").textContent(), "line one\nline two");
     assert.equal(fake.requests[0].question, "line one\nline two");
     assert.equal(await input.inputValue(), "");
+  });
+});
+
+describe("answer row", () => {
+  test("while typing: progress bar, X/200 characters and a Stop button that ends the answer", async () => {
+    const page = await open();
+    const gate = deferred();
+    const fake = scripted("Hello world", { gate: { 4: gate.promise } });
+    await page.route("**/api/next", fake);
+    await askViaUI(page, "Say hello");
+    await page.waitForFunction(() => document.querySelectorAll(".answer .ch").length === 4, null, T);
+
+    const meta = page.locator(".meta");
+    assert.equal(await meta.locator(".bar").count(), 1);
+    assert.match(await meta.innerText(), /4\/200 characters/);
+    assert.doesNotMatch(await meta.innerText(), /Jev call/);
+    await meta.locator(".stop-answer").click();
+    await waitAnswered(page);
+    gate.resolve();
+
+    assert.equal(await answerText(page), "Hell");
+    assert.equal(await meta.locator(".stop-answer").count(), 0);
+    assert.equal(await meta.locator(".bar").count(), 0);
+    assert.match(await meta.innerText(), /\b4 characters/);
+    await page.waitForTimeout(50);
+    assert.equal(fake.requests.length, 5, "nothing requested after Stop");
+  });
+
+  test("a spicy END shows the 'Jev got too spicy' notice", async () => {
+    const page = await open();
+    await page.route("**/api/next", scripted("Music and", { overrides: { 9: { pick: "END", char: "", spicy: true } } }));
+    await askViaUI(page, "Name three muppets.");
+    await page.locator(".notice.spicy").waitFor(T);
+    assert.match(await page.locator(".notice.spicy").innerText(), /Jev got too spicy/);
+    assert.equal(await answerText(page), "Music and");
+  });
+
+  test("the tooltip says how many options passed screening", async () => {
+    const page = await open();
+    await page.route("**/api/next", scripted("Hi", { overrides: { 0: { screened: 3 }, 1: { screened: 1 } } }));
+    await askViaUI(page, "Q");
+    await waitAnswered(page);
+    await page.locator(".answer .ch").nth(0).hover();
+    await page.locator("#tooltip .screen-note").waitFor(T);
+    assert.equal(await page.locator("#tooltip .screen-note").textContent(), "3 options passed screening");
+    await page.locator(".answer .ch").nth(1).hover();
+    await page.waitForFunction(() => document.querySelector("#tooltip .screen-note")?.textContent === "Only option to pass screening", null, T);
   });
 });
 
