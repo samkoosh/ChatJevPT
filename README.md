@@ -19,9 +19,10 @@ also stop early once the answer is complete. The answer types out live in a dark
 - **See inside the "model"**: hover (or tap, on mobile) any letter to see Jev's top five candidates and
   their probabilities. Characters that won a tie are underlined.
 - **Model levels**, as in "dumb as a ___", picked in the composer:
-  - **Rock**: the naive version. One Choice per character over every character, with nothing but the
-    question and the answer so far; the most probable character wins. No word list, no screening, no
-    memory.
+  - **Rock**: the naive version. One Choice per character over every character (labelled with the
+    character itself; the space, NEWLINE and END are described), with nothing but the question, the
+    answer so far and the characters remaining; the most probable character wins. No word list, no
+    screening, no memory.
   - **Stump** (default): the full pipeline described below.
   - **Post**: locked, still in development.
 - **Rock lab** (admins): a Lab button next to Memory opens Rock's instructions right in the chat.
