@@ -111,7 +111,7 @@ test("token usage and cost include runoff calls", async () => {
 
 test("the word-complete check only holds short words open", async () => {
   const jev = fakeJev((o) => (o === "SPACE" ? 10 : 1), { wordDone: 0.1 });
-  const r = await nextCharacter("q", "Beautif", [], jev);
+  const r = await nextCharacter("q", "Because", [], jev);
   assert.equal(r.pick, "SPACE", "7-letter word isn't held open");
   assert.equal(jev.requests[0].questions.word_done, undefined);
 });

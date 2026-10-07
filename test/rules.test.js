@@ -98,3 +98,18 @@ test("a runaway word has to end at 18 letters", () => {
   assert.ok(!allowedOptions(long).some((o) => /^[A-Z]$/.test(o)));
   assert.ok(allowedOptions(long).includes("SPACE"));
 });
+
+test("letters only go where they keep spelling a real word", () => {
+  const letters = (answer) => allowedOptions(answer).filter((o) => /^[A-Z]$/.test(o)).join("");
+  assert.equal(letters("Barl"), "EO", "barley, barlow");
+  assert.ok(letters("The bl").includes("U"));
+  assert.ok(!letters("The bl").includes("Z"));
+  assert.equal(letters("don'"), "DLMRSTV", "contractions after an apostrophe");
+});
+
+test("a word can only end once it's a real word", () => {
+  assert.ok(!allowedOptions("The bl").includes("SPACE"), '"bl" is not a word');
+  assert.ok(!allowedOptions("It is th").includes("END"));
+  assert.ok(allowedOptions("Be").includes("SPACE"));
+  assert.ok(allowedOptions("Shakespeare").includes("END"));
+});

@@ -1,10 +1,11 @@
-// Runs the live eval set against real Jev and prints a scorecard.
-// Usage: npm run eval   (reads TYPESAFE_API_KEY from .env)
+// Content suite: runs the question set against real Jev, headless, and prints a scorecard.
+// Usage: npm run test:content [-- repeats]   (reads TYPESAFE_API_KEY from .env)
 import { runEval } from "../lib/eval.js";
 
-const { passed, total, cost, results } = await runEval();
+const repeats = Number(process.argv[2]) || 3;
+const { passed, total, cost, results } = await runEval(undefined, { repeats });
 for (const r of results) {
-  const answer = JSON.stringify(r.answer.replace(/\n/g, " / "));
-  console.log(`${r.pass ? "PASS" : "FAIL"}  ${r.question}${r.history ? " (follow-up)" : ""}\n      ${answer}  [${r.calls} calls]${r.error ? `  ${r.error}` : ""}`);
+  console.log(`${r.passes}/${r.runs}  ${r.question}${r.history ? " (follow-up)" : ""}${r.error ? `  ${r.error}` : ""}`);
+  for (const a of r.answers) console.log(`        ${JSON.stringify(a.replace(/\n/g, " / "))}`);
 }
-console.log(`\n${passed}/${total} passed · $${cost.toFixed(4)} total`);
+console.log(`\n${passed}/${total} runs passed · $${cost.toFixed(4)}`);

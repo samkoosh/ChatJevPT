@@ -1,8 +1,14 @@
-// TEMPORARY (preview only): runs the live eval set against real Jev. Removed before merging.
+// TEMPORARY (preview only): runs the content suite against real Jev. Removed before merging.
 import { runEval } from "../lib/eval.js";
 
-export async function GET() {
+export async function GET(request) {
   if (process.env.VERCEL_ENV !== "preview") return new Response("Not found", { status: 404 });
-  const { passed, total, cost, results } = await runEval();
-  return Response.json({ passed, total, cost, results: results.map((r) => `${r.pass ? "PASS" : "FAIL"} | ${r.question}${r.history ? " (follow-up)" : ""} | ${JSON.stringify(r.answer)} | ${r.calls ?? 0} calls${r.error ? ` | ${r.error}` : ""}`) });
+  const repeats = Number(new URL(request.url).searchParams.get("repeats")) || 3;
+  const { passed, total, cost, results } = await runEval(undefined, { repeats });
+  return Response.json({
+    passed,
+    total,
+    cost,
+    results: results.map((r) => `${r.passes}/${r.runs} | ${r.question}${r.history ? " (follow-up)" : ""} | ${r.answers.map((a) => JSON.stringify(a)).join(" ; ")}${r.error ? ` | ${r.error}` : ""}`),
+  });
 }
