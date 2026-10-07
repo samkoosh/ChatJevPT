@@ -9,9 +9,13 @@
     "dev": "node --env-file-if-exists=.env dev.mjs",
     "dev:mock": "JEV_MOCK=1 node dev.mjs",
     "test": "node --test test/*.test.js",
-    "eval": "node --env-file-if-exists=.env scripts/eval.mjs"
+    "test:ui": "node --test test-ui/*.test.mjs",
+    "test:content": "node --env-file-if-exists=.env scripts/eval.mjs"
   },
   "dependencies": {
     "@typesafe-ai/sdk": "^0.6.0"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.1"
   }
 }
