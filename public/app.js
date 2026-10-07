@@ -94,18 +94,27 @@ function ratingChip(rating) {
   return chip;
 }
 
-function renderMeta(meta, { length, calls, ms, cost, done, rating, answerText, question }) {
+function renderMeta(meta, { length, ms, cost, done, rating, answerText, question, stop }) {
   meta.innerHTML = "";
   if (rating) meta.append(ratingChip(rating));
-  const bar = el("span", "bar");
-  const fill = el("i");
-  fill.style.width = `${(length / MAX_LENGTH) * 100}%`;
-  bar.append(fill);
-  meta.append(bar, el("span", null, `${length}/${MAX_LENGTH}`));
-  meta.append(el("span", null, `${calls} Jev call${calls === 1 ? "" : "s"}`));
+  if (!done) {
+    const bar = el("span", "bar");
+    const fill = el("i");
+    fill.style.width = `${(length / MAX_LENGTH) * 100}%`;
+    bar.append(fill);
+    meta.append(bar, el("span", null, `${length}/${MAX_LENGTH} characters`));
+  } else {
+    meta.append(el("span", null, `${length} character${length === 1 ? "" : "s"}`));
+  }
   meta.append(el("span", null, `${(ms / 1000).toFixed(1)}s`));
   meta.append(el("span", null, formatCost(cost)));
-  if (!done) return;
+  if (!done) {
+    const halt = el("button", "act stop-answer");
+    halt.innerHTML = `${icon('<rect x="6" y="6" width="12" height="12" rx="2"/>')}Stop`;
+    halt.onclick = stop;
+    meta.append(halt);
+    return;
+  }
 
   const copy = el("button", "act");
   copy.innerHTML = `${icon('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>')}Copy`;
@@ -122,6 +131,15 @@ function renderMeta(meta, { length, calls, ms, cost, done, rating, answerText, q
   retry.innerHTML = `${icon('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}Retry`;
   retry.onclick = () => !controller && ask(question);
   meta.append(copy, retry);
+}
+
+function spicyNotice() {
+  const notice = el("div", "notice spicy");
+  notice.innerHTML = icon('<path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 0-7Z"/>');
+  const text = el("div");
+  text.append(el("strong", null, "Jev got too spicy"), el("p", null, "The answer stopped making sense, so Jev cut it off."));
+  notice.append(text);
+  return notice;
 }
 
 function creditsNotice(message) {
@@ -151,32 +169,37 @@ async function ask(question) {
   window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
 
   controller = new AbortController();
+  const myController = controller;
   setBusy(true);
   const started = performance.now();
   const priorTurns = history.slice(-6);
   let answer = "";
-  let calls = 0;
+  let spicy = false;
   let cost = 0;
   let rating = null;
   let ms = 0;
   const text = () => answer.trim();
   const stats = (done) => {
     if (!done) ms = performance.now() - started; // the clock stops when the answer does
-    return { length: answer.length, calls, ms, cost, done, rating, answerText: text, question };
+    return { length: answer.length, ms, cost, done, rating, answerText: text, question, stop: () => myController.abort() };
   };
 
   try {
     while (answer.length < MAX_LENGTH) {
-      const { pick, char, top, tied, coinFlip, tokens, cost: stepCost } = await fetchNext(question, answer, priorTurns, controller.signal);
-      calls++;
+      const step = await fetchNext(question, answer, priorTurns, controller.signal);
+      const { pick, char, top, tied, coinFlip, screened, tokens, cost: stepCost } = step;
       cost += stepCost ?? 0;
       addUsage(tokens, stepCost);
       thinking.remove();
-      if (pick === "END") break;
+      if (pick === "END") {
+        if (step.spicy) spicy = true;
+        break;
+      }
 
       const span = el("span", "ch new", char);
       span.dataset.top = JSON.stringify(top);
       span.dataset.pick = pick;
+      if (screened) span.dataset.screened = screened;
       if (tied > 1) {
         span.classList.add("tied");
         span.dataset.tied = tied;
@@ -194,6 +217,7 @@ async function ask(question) {
   } finally {
     caret.remove();
     msg.classList.remove("typing");
+    if (spicy) body.insertBefore(spicyNotice(), meta);
     stats(false);
     if (!answer) answerEl.remove();
     else history.push({ question, answer: answer.trim() });
@@ -266,7 +290,9 @@ function showTooltip(span) {
   tooltip.innerHTML = "";
   const how = span.dataset.coin ? "coin flip" : "runoff";
   const tied = span.dataset.tied ? ` · ${span.dataset.tied}-way tie, ${how}` : "";
+  const passed = span.dataset.screened;
   tooltip.append(el("h4", null, `Jev's top picks${tied}`));
+  if (passed) tooltip.append(el("p", "screen-note", passed === "1" ? "Only option to pass screening" : `${passed} options passed screening`));
   for (const { option, p } of top) {
     const row = el("div", `row${option === span.dataset.pick ? " picked" : ""}`);
     const track = el("span", "track");
