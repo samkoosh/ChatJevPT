@@ -9,6 +9,7 @@ import {
   failing,
   launchBrowser,
   openPage,
+  rated,
   scripted,
   startServer,
   TOKENS_PER_CALL,
@@ -341,6 +342,71 @@ describe("desktop", () => {
     assert.equal(await page.locator(".msg-user").textContent(), "line one\nline two");
     assert.equal(fake.requests[0].question, "line one\nline two");
     assert.equal(await input.inputValue(), "");
+  });
+});
+
+describe("answer rating", () => {
+  test("each finished answer gets Jev's rating, sent with the chat context", async () => {
+    const page = await open();
+    const gate = deferred();
+    const rate = rated({ label: "Perfect", score: 3.8, tokens: 200, cost: 0.0002 }, { gate: gate.promise });
+    await page.route("**/api/rate", rate);
+    await page.route("**/api/next", byQuestion({ One: scripted("Paris"), Two: scripted("Berlin") }));
+
+    await askViaUI(page, "One");
+    await waitAnswered(page);
+    const chip = page.locator(".msg-jev .rating").first();
+    await chip.waitFor(T);
+    assert.equal(await chip.textContent(), "Rating…", "pending while Jev grades it");
+    gate.resolve();
+    await page.locator(".msg-jev .rating-perfect").first().waitFor(T);
+    assert.equal(await chip.textContent(), "Perfect");
+    assert.match(await chip.getAttribute("title"), /Perfect \(3\.8 of 4\)/);
+    assert.deepEqual(rate.requests[0], { question: "One", answer: "Paris", history: [] });
+
+    // Rating cost counts toward the answer and the chat: 6 calls + 1 rating.
+    assert.match(await page.locator(".meta").first().innerText(), /\$0\.0008/);
+    assert.match(await page.locator("#cost-meter").textContent(), /800 tokens/);
+
+    await askViaUI(page, "Two");
+    await waitAnswered(page, 2);
+    await page.locator(".msg-jev").nth(1).locator(".rating-perfect").waitFor(T);
+    assert.deepEqual(rate.requests[1].history, [{ question: "One", answer: "Paris" }], "rated with the context it answered with");
+  });
+
+  test("every label gets its own style", async () => {
+    for (const [label, score] of [["Terrible", 0.2], ["Bad", 1.1], ["Solid", 2], ["Good", 3], ["Perfect", 4]]) {
+      const page = await open();
+      await page.route("**/api/rate", rated({ label, score, tokens: 0, cost: 0 }));
+      await page.route("**/api/next", scripted("Ok"));
+      await askViaUI(page, "Q");
+      await page.locator(`.rating-${label.toLowerCase()}`).waitFor(T);
+      assert.equal(await page.locator(".rating").textContent(), label);
+      await session.context.close();
+      session.assertNoLeaks();
+      session = null;
+    }
+  });
+
+  test("a failed rating just leaves the answer unrated", async () => {
+    const page = await open();
+    await page.route("**/api/rate", failing(502, { error: "Jev didn't answer." }));
+    await page.route("**/api/next", scripted("Paris"));
+    await askViaUI(page, "Q");
+    await waitAnswered(page);
+    await page.waitForFunction(() => !document.querySelector(".rating"), null, T);
+    assert.equal(await page.locator(".error").count(), 0);
+    assert.equal(await answerText(page), "Paris");
+  });
+
+  test("an answer with no text isn't rated", async () => {
+    const page = await open();
+    const rate = rated({ label: "Bad", score: 1, tokens: 0, cost: 0 });
+    await page.route("**/api/rate", rate);
+    await page.route("**/api/next", failing(502, { error: "Jev didn't answer." }));
+    await askViaUI(page, "Q");
+    await page.locator(".error").waitFor(T);
+    assert.equal(rate.requests.length, 0, "nothing to rate");
   });
 });
 

@@ -45,3 +45,20 @@ test("recognizes an exhausted balance", () => {
   assert.ok(!isOutOfCredits({ status: 500, message: "boom" }));
   assert.ok(!isOutOfCredits(new Error("network down")));
 });
+
+const { POST: RATE } = await import("../api/rate.js");
+const rate = (body) => RATE(new Request("http://x/api/rate", { method: "POST", body: JSON.stringify(body) }));
+
+test("rate returns a label for a valid answer", async () => {
+  const res = await rate({ question: "Hi", answer: "Hello", history: [] });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.ok(["Terrible", "Bad", "Solid", "Good", "Perfect"].includes(data.label));
+  assert.equal(typeof data.score, "number");
+});
+
+test("rate rejects bad input", async () => {
+  assert.equal((await rate({ question: "Hi", answer: "" })).status, 400);
+  assert.equal((await rate({ question: "", answer: "Hello" })).status, 400);
+  assert.equal((await rate({ question: "Hi", answer: "<b>" })).status, 400);
+});

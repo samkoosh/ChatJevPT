@@ -20,6 +20,9 @@ also stop early once the answer is complete. The answer types out live in a dark
   their probabilities. Characters that won a tie are underlined.
 - **Follow-up questions**: earlier turns in the chat are sent along, so "What about Germany?" after
   "What is the capital of France?" gets "Berlin". New chat starts fresh.
+- **Jev grades its own answers**: when an answer finishes, one more Jev call (a five-level Score
+  question, with the chat context) tags it **Terrible, Bad, Solid, Good or Perfect**. In testing the
+  tag tracked correctness well: right answers came back Perfect, rambling ones Bad or Terrible.
 - **Running cost meter**: the header shows what the chat has cost so far in Jev tokens and dollars, and
   each answer shows its own cost.
 - **Stop, Retry, Copy and New chat**, like the chat apps it's imitating.

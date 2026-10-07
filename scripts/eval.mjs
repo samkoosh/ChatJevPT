@@ -6,6 +6,6 @@ const repeats = Number(process.argv[2]) || 3;
 const { passed, total, cost, results } = await runEval(undefined, { repeats });
 for (const r of results) {
   console.log(`${r.passes}/${r.runs}  ${r.question}${r.history ? " (follow-up)" : ""}${r.error ? `  ${r.error}` : ""}`);
-  for (const a of r.answers) console.log(`        ${JSON.stringify(a.replace(/\n/g, " / "))}`);
+  r.answers.forEach((a, i) => console.log(`        [${r.ratings[i]}] ${JSON.stringify(a.replace(/\n/g, " / "))}`));
 }
 console.log(`\n${passed}/${total} runs passed · $${cost.toFixed(4)}`);
