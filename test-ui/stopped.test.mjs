@@ -56,7 +56,7 @@ test("Stop (either button) tags the answer Stopped; finished answers aren't", as
 
 test("saved chats remember Stopped and the level", async () => {
   const accounts = fakeAccounts({
-    chats: [{ id: "c1", title: "Old", updatedAt: new Date().toISOString(), turns: [{ question: "Q", answer: "Hel", tokens: 1, cost: 0, level: "rock", stopped: true }] }],
+    chats: [{ id: "c1", title: "Old", updatedAt: new Date().toISOString(), turns: [{ question: "Q", answer: "Hel", tokens: 1, cost: 0, level: "doornail", stopped: true }] }],
   });
   session = await openPage(browser, server.baseURL, { setup: (page) => accounts.install(page) });
   const page = session.page;
@@ -70,5 +70,5 @@ test("saved chats remember Stopped and the level", async () => {
 
   await page.locator("#chat-list button", { hasText: "Old" }).click();
   await page.locator(".msg-jev.saved .stopped-tag").waitFor(T);
-  assert.equal(await page.locator(".msg-jev.saved .level-tag").textContent(), "Rock");
+  assert.equal(await page.locator(".msg-jev.saved .level-tag").textContent(), "Doornail");
 });

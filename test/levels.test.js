@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { END, pickNext, rockCharacter } from "../lib/jev.js";
+import { END, MAX_LENGTH, pickNext, doornailCharacter, rockCharacter } from "../lib/jev.js";
 import { handle } from "../api/next.js";
 import { handle as handleRate } from "../api/rate.js";
 
@@ -22,9 +22,9 @@ function recorder(favorite = "B") {
   return { systemOne, requests };
 }
 
-test("Rock: one Choice over every character, with only the question and the answer so far", async () => {
+test("Doornail: one Choice over every character, with only the question and the answer so far", async () => {
   const jev = recorder("B");
-  const r = await rockCharacter("What color is the sky?", "", jev);
+  const r = await doornailCharacter("What color is the sky?", "", jev);
   assert.equal(jev.requests.length, 1);
   assert.deepEqual(jev.requests[0].state, { question: "What color is the sky?", answer_so_far: "" });
   const criteria = jev.requests[0].questions.next.criteria;
@@ -43,22 +43,50 @@ test("Rock: one Choice over every character, with only the question and the answ
   assert.equal(r.tokens, 10);
 });
 
-test("Rock offers END once something is written, and has no other rules", async () => {
+test("Doornail offers END once something is written, and has no other rules", async () => {
   const jev = recorder("space");
-  const r = await rockCharacter("q", "zzq ", jev);
+  const r = await doornailCharacter("q", "zzq ", jev);
   const criteria = jev.requests[0].questions.next.criteria;
   assert.equal(criteria[END], "The end of the answer, used to immediately stop generation. Use when the answer is satisfactory and complete.");
   assert.deepEqual(Object.keys(jev.requests[0].state), ["question", "answer_so_far"], "no character count");
   assert.equal(r.pick, "SPACE", "the space label maps back to a space");
-  assert.equal(r.char, " ", "double spaces are fine for a rock");
+  assert.equal(r.char, " ", "double spaces are fine for a doornail");
 });
 
-test("pickNext: Rock ignores memory; Stump drops history when memory is off", async () => {
+test("Rock: one Choice whose options are described as the answer they'd make, plus characters left", async () => {
+  const jev = recorder("R");
+  const r = await rockCharacter("What is the capital of France?", "Pa", jev);
+  assert.equal(jev.requests.length, 1, "still a single request");
+  const { state, questions } = jev.requests[0];
+  assert.deepEqual(state, { question: "What is the capital of France?", answer_so_far: "Pa", characters_remaining: MAX_LENGTH - 2 });
+  const { criteria, instructions } = questions.next;
+  assert.equal(criteria.R, "Par", "letters are cased as they'd be typed");
+  assert.equal(criteria.space, "Pa ");
+  assert.equal(criteria.NEWLINE, "Pa\n");
+  assert.equal(criteria["."], "Pa.");
+  assert.equal(criteria["4"], "Pa4");
+  assert.equal(criteria[END], "Pa", "END keeps the answer as it is");
+  assert.match(instructions, /one more character added/);
+  assert.equal(r.pick, "R");
+  assert.equal(r.char, "r");
+
+  const first = recorder("P");
+  await rockCharacter("q", "", first);
+  const opening = first.requests[0].questions.next.criteria;
+  assert.equal(opening.P, "P");
+  assert.ok(!(END in opening), "can't end before writing anything");
+});
+
+test("pickNext: Doornail ignores memory; Stump drops history when memory is off", async () => {
   const history = [{ question: "What is the capital of France?", answer: "Paris" }];
+  const doornail = recorder();
+  await pickNext("What about Germany?", "", history, { level: "doornail", ...doornail });
+  assert.equal(doornail.requests.length, 1);
+  assert.equal("previous_turns" in doornail.requests[0].state, false);
   const rock = recorder();
-  await pickNext("What about Germany?", "", history, { level: "rock", ...rock });
+  await pickNext("What about Germany?", "", history, { level: "rock", memory: true, ...rock });
   assert.equal(rock.requests.length, 1);
-  assert.equal("previous_turns" in rock.requests[0].state, false);
+  assert.equal("previous_turns" in rock.requests[0].state, false, "Rock ignores memory too");
 
   const on = recorder();
   await pickNext("What about Germany?", "", history, { level: "stump", memory: true, ...on });
@@ -82,10 +110,15 @@ test("API: level and memory", async () => {
     assert.deepEqual(postLevel.requests[0].state.previous_turns, history);
     assert.equal((await handle(post({ question: "Hi", answer: "", level: "boulder" }))).status, 400);
 
+    const doornail = recorder();
+    assert.equal((await handle(post({ question: "Hi", answer: "", level: "doornail", history }), doornail)).status, 200);
+    assert.equal(doornail.requests.length, 1);
+    assert.deepEqual(Object.keys(doornail.requests[0].state), ["question", "answer_so_far"]);
+
     const rock = recorder();
     assert.equal((await handle(post({ question: "Hi", answer: "", level: "rock", history }), rock)).status, 200);
     assert.equal(rock.requests.length, 1);
-    assert.deepEqual(Object.keys(rock.requests[0].state), ["question", "answer_so_far"]);
+    assert.deepEqual(Object.keys(rock.requests[0].state), ["question", "answer_so_far", "characters_remaining"]);
 
     const forgetful = recorder();
     await handle(post({ question: "Hi", answer: "", memory: false, history }), forgetful);
@@ -111,8 +144,8 @@ test("API: level and memory", async () => {
 test("saved turns keep their level and whether they were stopped", async () => {
   const { cleanTurn } = await import("../lib/chats.js");
   const base = { question: "Q", answer: "Hel", tokens: 1, cost: 0 };
-  assert.equal(cleanTurn({ ...base, level: "rock", stopped: true }).level, "rock");
-  assert.equal(cleanTurn({ ...base, level: "rock", stopped: true }).stopped, true);
+  assert.equal(cleanTurn({ ...base, level: "doornail", stopped: true }).level, "doornail");
+  assert.equal(cleanTurn({ ...base, level: "doornail", stopped: true }).stopped, true);
   assert.equal(cleanTurn({ ...base, level: "post" }).level, "post");
   assert.equal("level" in cleanTurn({ ...base, level: "boulder" }), false, "only playable levels");
   assert.equal("stopped" in cleanTurn({ ...base, stopped: "yes" }), false, "only a real true");

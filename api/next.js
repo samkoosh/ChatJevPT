@@ -1,8 +1,8 @@
-import { ANSWER_PATTERN, LEVELS, MAX_LENGTH, PLAYABLE_LEVELS, pickNext } from "../lib/jev.js";
+import { ANSWER_PATTERN, FORGETFUL_LEVELS, LEVELS, MAX_LENGTH, PLAYABLE_LEVELS, pickNext } from "../lib/jev.js";
 import { jevErrorResponse, missingKeyResponse } from "../lib/errors.js";
 import { authenticate, budgetResponse, charge, isAdmin } from "../lib/auth.js";
 import { chatHistory } from "../lib/chats.js";
-import { cleanInstructions, rockInstructions } from "../lib/rock.js";
+import { cleanInstructions, doornailInstructions } from "../lib/doornail.js";
 
 export { isOutOfCredits } from "../lib/errors.js";
 
@@ -39,7 +39,7 @@ export async function handle(request, { systemOne } = {}) {
   if (!PLAYABLE_LEVELS.includes(level)) {
     return Response.json({ error: "That level is locked.", code: "level_locked" }, { status: 400 });
   }
-  const memory = body.memory !== false && level !== "rock";
+  const memory = body.memory !== false && !FORGETFUL_LEVELS.includes(level);
   const noKey = missingKeyResponse();
   if (noKey) return noKey;
 
@@ -54,14 +54,14 @@ export async function handle(request, { systemOne } = {}) {
 
   let result;
   try {
-    // Admins can try draft Rock instructions on their own answers (the in-chat Rock lab).
-    let rock;
-    if (level === "rock") {
-      const draft = auth.user && isAdmin(auth.user) && body.rockInstructions != null ? cleanInstructions(body.rockInstructions) : null;
+    // Admins can try draft Doornail instructions on their own answers (the in-chat Doornail lab).
+    let doornail;
+    if (level === "doornail") {
+      const draft = auth.user && isAdmin(auth.user) && body.doornailInstructions != null ? cleanInstructions(body.doornailInstructions) : null;
       if (draft?.error) return Response.json({ error: draft.error }, { status: 400 });
-      rock = draft?.value ?? (await rockInstructions());
+      doornail = draft?.value ?? (await doornailInstructions());
     }
-    result = await pickNext(question, answer, history, { level, memory, systemOne, rockInstructions: rock });
+    result = await pickNext(question, answer, history, { level, memory, systemOne, doornailInstructions: doornail });
   } catch (err) {
     return jevErrorResponse(err);
   }

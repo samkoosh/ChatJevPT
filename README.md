@@ -19,20 +19,24 @@ also stop early once the answer is complete. The answer types out live in a dark
 - **See inside the "model"**: hover (or tap, on mobile) any letter to see Jev's top five candidates and
   their probabilities. Characters that won a tie are underlined.
 - **Model levels**, as in "dumb as a ___", picked in the composer:
-  - **Rock**: the naive version. One Choice per character over every character (labelled with the
+  - **Doornail**: the naive version. One Choice per character over every character (labelled with the
     character itself, a space as the word "space", each with a one-line description such as "The letter A."), with nothing but the question and the
     answer so far; the most probable character wins. No word list, no
     screening, no memory.
+  - **Rock**: still one Choice per character over the same options, but each option's description
+    is the answer it would make (`answer_so_far` plus that character, so "Pa" offers R as "Par";
+    END's description is the answer as it stands), and the state also has `characters_remaining`.
+    No memory.
   - **Stump** (default): the full pipeline described below.
   - **Post**: an experiment. Each character starts with a round that asks only what *kind* of
     character comes next, then runs Stump's checks within that kind (see [Post](#post-kind-first)).
-- **Rock lab** (admins): a Lab button next to Memory opens Rock's instructions right in the chat.
-  Edits apply immediately to your own Rock answers (sent with your requests; the server only accepts
-  that from admins). **Save for everyone** stores them (a `settings` table) for all Rock answers,
+- **Doornail lab** (admins): a Lab button next to Memory opens Doornail's instructions right in the chat.
+  Edits apply immediately to your own Doornail answers (sent with your requests; the server only accepts
+  that from admins). **Save for everyone** stores them (a `settings` table) for all Doornail answers,
   **Reset to default** puts the original back, **Discard my edits** goes back to what's saved.
 - **Memory toggle**: with memory on (the default), earlier turns in the chat are sent along, so "What
   about Germany?" after "What is the capital of France?" gets "Berlin". Off, each question stands alone
-  (for the answer and its rating). Rock never uses memory. New chat starts fresh either way.
+  (for the answer and its rating). Doornail and Rock never use memory. New chat starts fresh either way.
 - **Jev grades its own answers**: when an answer finishes, one more Jev call (a five-level Score
   question, with the chat context) tags it **Terrible, Bad, Solid, Good or Perfect**. In testing the
   tag tracked correctness well: right answers came back Perfect, rambling ones Bad or Terrible.
@@ -213,7 +217,7 @@ allowance ($0.25 by default) and up to 5 saved chats.
   The allowance is a lifetime total ($0.25 unless you set theirs on the admin page; it doesn't reset).
   Once it's used, they see "Allowance used up" and can ask you for more.
 - **Preview as non-admin**: admins can switch the page (avatar menu) to look the way it does for a
-  regular person: no Admin link or Rock lab, usage against the $0.25 allowance, the 5-chat limit, and a
+  regular person: no Admin link or Doornail lab, usage against the $0.25 allowance, the 5-chat limit, and a
   banner with "Exit preview". It's only a view; the server still treats them as an admin.
 - **Admins have no budget limit.** Everyone with role admin, including everyone in `ADMIN_EMAILS`, is
   never blocked; their usage is still recorded and shown ("Usage: $X total · no limit").

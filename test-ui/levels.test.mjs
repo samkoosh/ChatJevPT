@@ -1,4 +1,4 @@
-// Model level picker (Rock / Stump / Post) and the memory toggle. All /api/* spoofed.
+// Model level picker (Doornail / Rock / Stump / Post) and the memory toggle. All /api/* spoofed.
 import { after, afterEach, before, test } from "node:test";
 import assert from "node:assert/strict";
 import { byQuestion, launchBrowser, openPage, scripted, startServer } from "./helpers.mjs";
@@ -48,8 +48,27 @@ test("Stump with memory is the default and is what requests send", async () => {
   assert.match(await page.locator(".meta .level-tag").textContent(), /Stump/);
 });
 
-test("Rock: requests say rock, memory is off and greyed out, and the choice is remembered", async () => {
+test("Doornail: requests say doornail, memory is off and greyed out, and the choice is remembered", async () => {
   const page = await open();
+  await level(page, "doornail").click();
+  assert.equal(await level(page, "doornail").getAttribute("aria-checked"), "true");
+  assert.ok(await page.locator("#memory-toggle").isDisabled());
+  assert.match(await page.locator("#memory-toggle").getAttribute("title"), /Doornails don't remember/);
+
+  const fake = scripted("Hi");
+  await page.route("**/api/next", fake);
+  await ask(page, "Q");
+  assert.ok(fake.requests.every((r) => r.level === "doornail" && r.memory === false));
+  assert.match(await page.locator(".meta .level-tag").textContent(), /Doornail/);
+
+  await page.reload();
+  assert.equal(await level(page, "doornail").getAttribute("aria-checked"), "true", "remembered");
+});
+
+test("Rock: sits between Doornail and Stump, requests say rock, and memory is off", async () => {
+  const page = await open();
+  const order = await page.locator(".level-option").evaluateAll((els) => els.map((e) => e.dataset.level));
+  assert.deepEqual(order, ["doornail", "rock", "stump", "post"]);
   await level(page, "rock").click();
   assert.equal(await level(page, "rock").getAttribute("aria-checked"), "true");
   assert.ok(await page.locator("#memory-toggle").isDisabled());
@@ -58,11 +77,8 @@ test("Rock: requests say rock, memory is off and greyed out, and the choice is r
   const fake = scripted("Hi");
   await page.route("**/api/next", fake);
   await ask(page, "Q");
-  assert.ok(fake.requests.every((r) => r.level === "rock" && r.memory === false));
+  assert.ok(fake.requests.every((r) => r.level === "rock" && r.memory === false && !("doornailInstructions" in r)));
   assert.match(await page.locator(".meta .level-tag").textContent(), /Rock/);
-
-  await page.reload();
-  assert.equal(await level(page, "rock").getAttribute("aria-checked"), "true", "remembered");
 });
 
 test("Post: requests say post, memory stays on, and the tooltip shows the kind round", async () => {
@@ -114,7 +130,7 @@ test("changing level mid-answer doesn't change the answer in progress", async ()
   await page.fill("#input", "Q");
   await page.click("#send");
   await page.waitForFunction(() => document.querySelectorAll(".answer .ch").length === 2, null, T);
-  await level(page, "rock").click();
+  await level(page, "doornail").click();
   release();
   await page.waitForFunction(() => !document.querySelector("#send.stop"), null, T);
   assert.ok(fake.requests.every((r) => r.level === "stump"));
