@@ -1,0 +1,1187 @@
+/*
+ * ChatJevPT "Y2K" theme: GeoCities circa 1999, on purpose.
+ *
+ * Everything here is scoped under html[data-ui-theme="y2k"] (set by public/theme.js
+ * and the inline <head> script), except the theme switch itself, which both themes
+ * show. Switching themes only flips that attribute, so nothing in the chat changes.
+ *
+ * Deliberately tacky, but the answer text and the controls stay readable
+ * (dark text on light panels, or bright text on the starfield).
+ */
+
+/* ---- Theme controls (both themes) ---------------------------------------- */
+
+.theme-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  margin-left: auto;
+}
+
+/* The cost meter already pushes everything after it to the right. */
+.cost-meter:not([hidden]) ~ .theme-controls {
+  margin-left: 0;
+}
+
+.theme-switch {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 11px;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.theme-switch:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.theme-switch .to-modern,
+.sound-toggle {
+  display: none;
+}
+
+html:not([data-ui-theme="y2k"]) .y2k-only,
+html:not([data-ui-theme="y2k"]) .y2k-sparkle {
+  display: none !important;
+}
+
+/* ---- Palette and fonts --------------------------------------------------- */
+
+[data-ui-theme="y2k"] {
+  --bg: #000022;
+  --surface: #c0c0c0;
+  --surface-2: #dfdfdf;
+  --border: #808080;
+  --border-strong: #000;
+  --text: #ffffff;
+  --text-dim: #ffff66;
+  --text-faint: #ccccff;
+  --accent: #ff00ff;
+  --accent-soft: rgba(255, 255, 0, 0.55);
+  --danger: #cc0000;
+  --y2k-comic: "Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive;
+  --y2k-wordart: Impact, "Arial Black", "Comic Sans MS", "Comic Neue", sans-serif;
+  --y2k-title: linear-gradient(90deg, #000080, #1060c0);
+  --y2k-rainbow: linear-gradient(90deg, #ff0000, #ff9900, #ffff00, #33ff00, #00ccff, #6633ff, #ff00ff);
+  --serif: var(--y2k-comic);
+  --sans: var(--y2k-comic);
+  --mono: "Courier New", Courier, monospace;
+  --radius: 0;
+  color-scheme: light;
+}
+
+/* Light "Windows 98" panels: dark text on gray, wherever they appear. */
+[data-ui-theme="y2k"] .msg-jev > div:last-child,
+[data-ui-theme="y2k"] .composer,
+[data-ui-theme="y2k"] .tooltip,
+[data-ui-theme="y2k"] .sidebar,
+[data-ui-theme="y2k"] .menu,
+[data-ui-theme="y2k"] .account-menu,
+[data-ui-theme="y2k"] .signin-card {
+  --text: #000;
+  --text-dim: #000;
+  --text-faint: #333;
+  --surface: #d4d0c8;
+  --surface-2: #ffffff;
+  --border: #808080;
+  --accent-soft: #ffff00;
+  color: #000;
+}
+
+[data-ui-theme="y2k"] ::selection {
+  background: #ff00ff;
+  color: #fff;
+}
+
+/* A tiled starfield, twinkling slowly. */
+[data-ui-theme="y2k"] body {
+  overflow-x: clip;
+  background-color: #000022;
+  background-image:
+    radial-gradient(1.5px 1.5px at 23px 31px, #fff 50%, transparent),
+    radial-gradient(1px 1px at 71px 92px, #ffff99 50%, transparent),
+    radial-gradient(2px 2px at 118px 44px, #fff 50%, transparent),
+    radial-gradient(1px 1px at 160px 150px, #99ffff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 40px 170px, #ffccff 50%, transparent),
+    radial-gradient(1px 1px at 190px 20px, #fff 50%, transparent),
+    radial-gradient(1px 1px at 97px 197px, #fff 50%, transparent),
+    radial-gradient(2.5px 2.5px at 150px 260px, #fff 50%, transparent),
+    radial-gradient(1px 1px at 260px 80px, #ffff99 50%, transparent),
+    radial-gradient(1.5px 1.5px at 290px 220px, #99ffff 50%, transparent);
+  background-size: 210px 210px, 210px 210px, 210px 210px, 210px 210px, 210px 210px, 210px 210px, 210px 210px,
+    330px 330px, 330px 330px, 330px 330px;
+  animation: y2k-stars 90s linear infinite;
+}
+
+/* ---- Top bar: a Windows 98 title bar with WordArt ------------------------ */
+
+[data-ui-theme="y2k"] .topbar {
+  background: var(--y2k-title);
+  border-bottom: 3px ridge #c0c0c0;
+  padding: 8px 12px;
+  gap: 10px;
+}
+
+[data-ui-theme="y2k"] .topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -9px;
+  height: 6px;
+  background: var(--y2k-rainbow);
+  pointer-events: none;
+}
+
+[data-ui-theme="y2k"] .brand {
+  position: relative;
+  padding: 2px 6px;
+  border-radius: 0;
+}
+
+[data-ui-theme="y2k"] .brand:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-ui-theme="y2k"] .brand span {
+  font-family: var(--y2k-wordart);
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(180deg, #ffff00 10%, #ff9900 45%, #ff00cc 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 0.6px #400040;
+  filter: drop-shadow(2px 2px 0 #000);
+  display: inline-block;
+  transform: skew(-10deg) rotate(-3deg);
+}
+
+[data-ui-theme="y2k"] .brand .spark,
+[data-ui-theme="y2k"] .hero-spark,
+[data-ui-theme="y2k"] .msg-jev .avatar {
+  fill: #ffff00;
+  filter: drop-shadow(0 0 3px #ff00ff);
+  animation: y2k-spin 4s linear infinite;
+}
+
+/* Blinking NEW! badges. */
+[data-ui-theme="y2k"] .brand::after,
+[data-ui-theme="y2k"] .suggestions button:first-child::after {
+  content: "NEW!";
+  position: absolute;
+  top: -4px;
+  right: -26px;
+  padding: 0 4px;
+  background: #cc0000;
+  color: #ffff00;
+  border: 1px solid #ffff00;
+  font: bold 10px/14px Verdana, var(--y2k-comic);
+  transform: rotate(14deg);
+  animation: y2k-blink 0.8s steps(1) infinite;
+  pointer-events: none;
+}
+
+[data-ui-theme="y2k"] .model-pill {
+  margin-left: 22px;
+  background: #ffff00;
+  color: #000;
+  border: 2px dashed #ff00ff;
+  border-radius: 0;
+  font-weight: 700;
+  transform: rotate(4deg);
+  box-shadow: 3px 3px 0 #000;
+}
+
+/* A Winamp-style LCD. */
+[data-ui-theme="y2k"] .cost-meter {
+  background: #000;
+  color: #00ff00;
+  font: bold 12.5px/1.5 var(--mono);
+  border: 2px inset #808080;
+  padding: 2px 8px;
+  text-shadow: 0 0 4px #00ff00;
+}
+
+[data-ui-theme="y2k"] .cost-meter b {
+  color: #ffff00;
+  font-weight: 700;
+}
+
+/* Beveled 3D buttons. */
+[data-ui-theme="y2k"] .icon-btn,
+[data-ui-theme="y2k"] .sound-toggle,
+[data-ui-theme="y2k"] .meta .act,
+[data-ui-theme="y2k"] .send,
+[data-ui-theme="y2k"] .btn,
+[data-ui-theme="y2k"] .sidebar-new,
+[data-ui-theme="y2k"] .signin-card button,
+[data-ui-theme="y2k"] .admin-page button {
+  background: #c0c0c0;
+  color: #000;
+  border: 3px outset #f0f0f0;
+  border-radius: 0;
+}
+
+[data-ui-theme="y2k"] .icon-btn:hover,
+[data-ui-theme="y2k"] .sound-toggle:hover,
+[data-ui-theme="y2k"] .meta .act:hover,
+[data-ui-theme="y2k"] .send:hover:not(:disabled),
+[data-ui-theme="y2k"] .btn:hover,
+[data-ui-theme="y2k"] .sidebar-new:hover {
+  background: #e0e0e0;
+  color: #000;
+}
+
+[data-ui-theme="y2k"] .icon-btn:active,
+[data-ui-theme="y2k"] .sound-toggle:active,
+[data-ui-theme="y2k"] .theme-switch:active,
+[data-ui-theme="y2k"] .meta .act:active,
+[data-ui-theme="y2k"] .send:active:not(:disabled),
+[data-ui-theme="y2k"] .suggestions button:active,
+[data-ui-theme="y2k"] .btn:active,
+[data-ui-theme="y2k"] .sidebar-new:active {
+  border-style: inset;
+  transform: none;
+}
+
+[data-ui-theme="y2k"] .icon-btn {
+  width: 32px;
+  height: 32px;
+}
+
+[data-ui-theme="y2k"] .icon-btn svg {
+  stroke-width: 3;
+}
+
+[data-ui-theme="y2k"] .sound-toggle {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+}
+
+.sound-toggle[aria-pressed="false"] .sound-on,
+.sound-toggle[aria-pressed="true"] .sound-off {
+  display: none;
+}
+
+[data-ui-theme="y2k"] .theme-switch {
+  background: #ff66cc;
+  color: #000;
+  border: 3px outset #ffc2ea;
+  border-radius: 0;
+  font: bold 14px/1.3 var(--y2k-comic);
+  padding: 3px 9px;
+  transform: rotate(-3deg);
+  box-shadow: 2px 2px 0 #000;
+}
+
+[data-ui-theme="y2k"] .theme-switch:hover {
+  background: #ff99dd;
+  color: #000;
+  border-color: #ffc2ea;
+}
+
+[data-ui-theme="y2k"] .theme-switch .to-y2k {
+  display: none;
+}
+
+[data-ui-theme="y2k"] .theme-switch .to-modern {
+  display: inline;
+}
+
+/* ---- Marquee banner (theme-only markup from theme.js) -------------------- */
+
+[data-ui-theme="y2k"] .y2k-marquee {
+  flex: none;
+  overflow: hidden;
+  margin-top: 6px;
+  padding: 3px 0;
+  background: #000;
+  border-top: 2px solid #ff00ff;
+  border-bottom: 2px solid #00ffff;
+  color: #00ff00;
+  font: bold 14px/1.4 var(--mono);
+  white-space: nowrap;
+}
+
+.y2k-marquee-track {
+  display: inline-flex;
+  animation: y2k-marquee 24s linear infinite;
+}
+
+.y2k-marquee-track span {
+  padding-right: 1.5em;
+}
+
+/* ---- Empty state --------------------------------------------------------- */
+
+[data-ui-theme="y2k"] .hero {
+  flex-wrap: wrap;
+  text-align: center;
+  margin-top: 16px;
+}
+
+[data-ui-theme="y2k"] .hero h1 {
+  font-family: var(--y2k-wordart);
+  font-weight: 700;
+  font-size: clamp(30px, 6vw, 46px);
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  background: linear-gradient(180deg, #00ffff 0%, #3366ff 35%, #ff00ff 65%, #ffff00 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 1px #fff;
+  filter: drop-shadow(3px 3px 0 #cc0066);
+  transform: rotate(-3deg) skew(-6deg);
+}
+
+[data-ui-theme="y2k"] .hero::after {
+  content: "🚧 UNDER CONSTRUCTION 🚧";
+  flex-basis: 100%;
+  max-width: max-content;
+  margin: 18px auto 0;
+  padding: 4px 12px;
+  background: #ffcc00;
+  color: #000;
+  font: bold 14px/1.4 var(--y2k-comic);
+  border: 6px solid;
+  border-image: repeating-linear-gradient(45deg, #000 0 8px, #ffcc00 8px 16px) 6;
+  transform: rotate(2deg);
+}
+
+[data-ui-theme="y2k"] .suggestions {
+  gap: 12px 10px;
+}
+
+[data-ui-theme="y2k"] .suggestions button {
+  position: relative;
+  color: #000;
+  border: 3px outset #f0f0f0;
+  border-radius: 0;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 5px 12px;
+  box-shadow: 3px 3px 0 #000;
+}
+
+[data-ui-theme="y2k"] .suggestions button:nth-child(4n + 1) {
+  background: #ffff66;
+  transform: rotate(-3deg);
+}
+
+[data-ui-theme="y2k"] .suggestions button:nth-child(4n + 2) {
+  background: #66ffff;
+  transform: rotate(2deg) translateY(3px);
+}
+
+[data-ui-theme="y2k"] .suggestions button:nth-child(4n + 3) {
+  background: #ff99ff;
+  transform: rotate(-1deg);
+  font-family: "Times New Roman", serif;
+}
+
+[data-ui-theme="y2k"] .suggestions button:nth-child(4n) {
+  background: #99ff66;
+  transform: rotate(3deg) translateY(-2px);
+}
+
+[data-ui-theme="y2k"] .suggestions button:hover {
+  background: #fff;
+  color: #000;
+  border-color: #f0f0f0;
+}
+
+[data-ui-theme="y2k"] .suggestions button:first-child::after {
+  top: -10px;
+  right: -12px;
+}
+
+/* ---- Thread -------------------------------------------------------------- */
+
+/* You: an instant-messenger bubble. */
+[data-ui-theme="y2k"] .msg-user {
+  background: #ffffcc;
+  color: #0000cc;
+  border: 2px solid #000;
+  border-radius: 16px 16px 0 16px;
+  font-weight: 700;
+  transform: rotate(1.2deg);
+  box-shadow: 4px 4px 0 #ff00ff;
+}
+
+[data-ui-theme="y2k"] .msg-user::before {
+  content: "xX_y0u_Xx says:";
+  display: block;
+  color: #cc0000;
+  font-size: 12px;
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Jev: a Windows 98 dialog box. */
+[data-ui-theme="y2k"] .msg-jev {
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+}
+
+[data-ui-theme="y2k"] .msg-jev .avatar {
+  width: 30px;
+  height: 30px;
+}
+
+[data-ui-theme="y2k"] .msg-jev > div:last-child {
+  position: relative;
+  min-width: 0;
+  background: #c0c0c0;
+  border: 3px outset #f0f0f0;
+  padding: 32px 10px 10px;
+  transform: rotate(-0.5deg);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.7);
+}
+
+[data-ui-theme="y2k"] .msg-jev > div:last-child::before {
+  content: "Jev.exe - Answer";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  height: 24px;
+  padding: 0 34px 0 8px;
+  background: var(--y2k-title);
+  color: #fff;
+  font: bold 13px/24px Tahoma, Verdana, var(--y2k-comic);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-ui-theme="y2k"] .msg-jev.typing > div:last-child::before {
+  content: "Jev.exe - Typing... (Not Responding)";
+}
+
+[data-ui-theme="y2k"] .msg-jev > div:last-child::after {
+  content: "✕";
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 20px;
+  height: 18px;
+  background: #c0c0c0;
+  color: #000;
+  border: 2px outset #f0f0f0;
+  font: bold 11px/14px Verdana, sans-serif;
+  text-align: center;
+}
+
+/* A rainbow <hr> after every finished turn. */
+[data-ui-theme="y2k"] .msg-jev:not(.typing)::after {
+  content: "";
+  grid-column: 1 / -1;
+  height: 5px;
+  margin-top: 14px;
+  background: var(--y2k-rainbow);
+  box-shadow: 0 0 8px rgba(255, 0, 255, 0.6);
+  transform: rotate(-0.6deg);
+}
+
+[data-ui-theme="y2k"] .answer {
+  background: #fff;
+  color: #000;
+  padding: 8px 12px;
+  font-size: 18px;
+  box-shadow: inset 2px 2px #808080, inset -2px -2px #fff, inset 3px 3px #404040;
+}
+
+[data-ui-theme="y2k"] .answer .ch {
+  border-radius: 0;
+}
+
+[data-ui-theme="y2k"] .answer .ch:hover,
+[data-ui-theme="y2k"] .answer .ch.active {
+  background: #ffff00;
+  outline: 1px dotted #ff00ff;
+}
+
+[data-ui-theme="y2k"] .answer .ch.tied {
+  text-decoration-color: #ff00ff;
+}
+
+[data-ui-theme="y2k"] .thinking {
+  color: #000080;
+  font-style: italic;
+}
+
+[data-ui-theme="y2k"] .caret {
+  width: 10px;
+  border-radius: 0;
+  background: linear-gradient(180deg, #ff0000, #ffff00, #00ff00, #00ffff, #ff00ff);
+}
+
+/* The answer row: counts, a segmented progress bar, beveled buttons. */
+[data-ui-theme="y2k"] .meta {
+  color: #000;
+  font-size: 13px;
+  gap: 6px 12px;
+}
+
+[data-ui-theme="y2k"] .meta .bar {
+  width: 104px;
+  height: 16px;
+  border-radius: 0;
+  background: #fff;
+  border: 2px inset #f0f0f0;
+}
+
+[data-ui-theme="y2k"] .meta .bar i {
+  top: 1px;
+  bottom: 1px;
+  left: 1px;
+  border-radius: 0;
+  background: repeating-linear-gradient(90deg, #000080 0 8px, transparent 8px 10px);
+}
+
+[data-ui-theme="y2k"] .meta .act {
+  margin: 0;
+  padding: 1px 8px;
+  font-weight: 700;
+}
+
+[data-ui-theme="y2k"] .meta .act svg {
+  stroke-width: 2.6;
+}
+
+[data-ui-theme="y2k"] .meta .stop-answer {
+  color: #cc0000;
+}
+
+/* Rating chips: tilted stickers. */
+[data-ui-theme="y2k"] .rating {
+  border: 2px solid #000;
+  border-radius: 0;
+  color: #000;
+  font: bold 13px/18px var(--y2k-comic);
+  padding: 1px 8px;
+  transform: rotate(-5deg);
+  box-shadow: 2px 2px 0 #000;
+}
+
+[data-ui-theme="y2k"] .rating.pending {
+  background: #fff;
+  border-style: dashed;
+}
+
+[data-ui-theme="y2k"] .rating-terrible {
+  background: #ff6666;
+}
+
+[data-ui-theme="y2k"] .rating-terrible::before {
+  content: "☠\00a0";
+}
+
+[data-ui-theme="y2k"] .rating-bad {
+  background: #ffaa33;
+}
+
+[data-ui-theme="y2k"] .rating-solid {
+  background: #ffffff;
+}
+
+[data-ui-theme="y2k"] .rating-good {
+  background: #66ff66;
+}
+
+[data-ui-theme="y2k"] .rating-good::before {
+  content: "☺\00a0";
+}
+
+[data-ui-theme="y2k"] .rating-perfect {
+  background: linear-gradient(90deg, #ff9999, #ffcc66, #ffff66, #99ff99, #66ccff, #cc99ff, #ff9999);
+  background-size: 200% 100%;
+  animation: y2k-slide 2s linear infinite;
+}
+
+[data-ui-theme="y2k"] .rating-perfect::before,
+[data-ui-theme="y2k"] .rating-perfect::after {
+  content: "★";
+  color: #cc0066;
+  padding: 0 2px;
+}
+
+/* Notices and errors. */
+[data-ui-theme="y2k"] .notice {
+  background: #ffff99;
+  color: #000;
+  border: 4px double #cc0000;
+  border-radius: 0;
+  transform: rotate(0.8deg);
+  box-shadow: 4px 4px 0 #000;
+}
+
+[data-ui-theme="y2k"] .notice svg {
+  color: #cc0000;
+  stroke-width: 2.6;
+}
+
+[data-ui-theme="y2k"] .notice strong {
+  color: #cc0000;
+  font-size: 16px;
+}
+
+[data-ui-theme="y2k"] .notice p {
+  color: #000;
+}
+
+[data-ui-theme="y2k"] .notice.spicy {
+  background: linear-gradient(180deg, #ffee00, #ff9900 65%, #ff6600);
+  border: 4px ridge #ff0000;
+  transform: rotate(-1deg);
+  animation: y2k-shake 0.35s 4;
+}
+
+[data-ui-theme="y2k"] .notice.spicy strong,
+[data-ui-theme="y2k"] .notice.spicy svg {
+  color: #000;
+}
+
+[data-ui-theme="y2k"] .notice.spicy::after {
+  content: "🌶️🔥";
+  margin-left: auto;
+  align-self: center;
+  font-size: 24px;
+  line-height: 1;
+}
+
+[data-ui-theme="y2k"] .error {
+  background: #fff;
+  color: #cc0000;
+  border: 2px solid #cc0000;
+  padding: 6px 10px;
+  font-weight: 700;
+  box-shadow: 3px 3px 0 #000;
+}
+
+[data-ui-theme="y2k"] .error::before {
+  content: "⛔ ERROR!! ";
+}
+
+/* ---- Composer: an Outlook Express window --------------------------------- */
+
+[data-ui-theme="y2k"] .composer-wrap {
+  background: linear-gradient(transparent, #000022 22%);
+}
+
+[data-ui-theme="y2k"] .composer {
+  background: #c0c0c0;
+  border: 3px outset #f0f0f0;
+  border-radius: 0;
+  padding: 0 0 8px;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.7);
+}
+
+[data-ui-theme="y2k"] .composer:focus-within {
+  border-color: #f0f0f0;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.7), 0 0 0 3px #ff00ff;
+}
+
+[data-ui-theme="y2k"] .composer::before {
+  content: "✉ New Message - Jev Express";
+  display: block;
+  margin: 2px 2px 8px;
+  padding: 0 8px;
+  background: var(--y2k-title);
+  color: #fff;
+  font: bold 13px/24px Tahoma, Verdana, var(--y2k-comic);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-ui-theme="y2k"] .composer textarea {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 0 8px;
+  padding: 6px 8px;
+  background: #fff;
+  color: #000;
+  font-size: 16px;
+  box-shadow: inset 2px 2px #808080, inset -2px -2px #fff, inset 3px 3px #404040;
+}
+
+[data-ui-theme="y2k"] .composer textarea::placeholder {
+  color: #555;
+}
+
+[data-ui-theme="y2k"] .composer-row {
+  padding: 0 8px;
+}
+
+[data-ui-theme="y2k"] .hint {
+  color: #000;
+  font-family: var(--mono);
+}
+
+[data-ui-theme="y2k"] .send {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  height: 34px;
+  padding: 0 14px;
+  font: bold 15px/1 var(--y2k-comic);
+}
+
+[data-ui-theme="y2k"] .send::after {
+  content: "Send!";
+}
+
+[data-ui-theme="y2k"] .send.stop {
+  background: #ff9999;
+}
+
+[data-ui-theme="y2k"] .send.stop::after {
+  content: "STOP!!";
+}
+
+[data-ui-theme="y2k"] .send:disabled {
+  opacity: 1;
+  color: #808080;
+  text-shadow: 1px 1px 0 #fff;
+}
+
+[data-ui-theme="y2k"] .disclaimer {
+  color: #ffff66;
+  font: italic 13px/1.4 "Times New Roman", Times, serif;
+  text-shadow: 1px 1px 0 #000;
+}
+
+/* ---- Probability tooltip: a Windows tooltip ------------------------------ */
+
+[data-ui-theme="y2k"] .tooltip {
+  background: #ffffe1;
+  border: 1px solid #000;
+  border-radius: 0;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
+}
+
+[data-ui-theme="y2k"] .tooltip h4 {
+  color: #000;
+  font-weight: 700;
+}
+
+[data-ui-theme="y2k"] .tooltip .screen-note {
+  color: #333;
+}
+
+[data-ui-theme="y2k"] .tooltip .row.picked {
+  color: #0000cc;
+  font-weight: 700;
+}
+
+[data-ui-theme="y2k"] .tooltip .row span:last-child {
+  color: #000;
+}
+
+[data-ui-theme="y2k"] .tooltip .track {
+  border-radius: 0;
+  height: 8px;
+  background: #fff;
+  border: 1px solid #808080;
+}
+
+[data-ui-theme="y2k"] .tooltip .row:not(.picked) .track i {
+  background: #808080;
+}
+
+/* ---- Footer (theme-only markup from theme.js) ---------------------------- */
+
+[data-ui-theme="y2k"] .y2k-footer {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 12px 16px 28px;
+  text-align: center;
+  color: #fff;
+  font-size: 13px;
+}
+
+.y2k-footer p {
+  margin: 10px 0;
+}
+
+.y2k-hr {
+  height: 6px;
+  margin: 0 0 16px;
+  border: 0;
+  background: var(--y2k-rainbow);
+  transform: rotate(0.7deg);
+}
+
+.y2k-construction {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #ffcc00;
+  color: #000;
+  font-weight: 700;
+  border: 6px solid;
+  border-image: repeating-linear-gradient(45deg, #000 0 8px, #ffcc00 8px 16px) 6;
+  transform: rotate(-2deg);
+}
+
+.y2k-counter-row {
+  color: #00ffff;
+  font-weight: 700;
+}
+
+.y2k-counter {
+  display: inline-flex;
+  gap: 1px;
+  margin-left: 6px;
+  vertical-align: middle;
+  padding: 2px;
+  background: #333;
+  border: 2px inset #808080;
+}
+
+.y2k-counter b {
+  padding: 0 3px;
+  background: #000;
+  color: #ff3333;
+  font: bold 16px/1.2 var(--mono);
+}
+
+.y2k-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.y2k-badges span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 31px;
+  border: 2px outset #ddd;
+  font: bold 9px/1.1 Verdana, Arial, sans-serif;
+  text-align: center;
+}
+
+.y2k-badges .b-netscape {
+  background: linear-gradient(#000080, #0000cc);
+  color: #ffff00;
+}
+
+.y2k-badges .b-800 {
+  background: #c0c0c0;
+  color: #000;
+  transform: rotate(-4deg);
+}
+
+.y2k-badges .b-y2k {
+  background: #000;
+  color: #00ff00;
+}
+
+.y2k-badges .b-notepad {
+  background: #ffffff;
+  color: #cc0000;
+  transform: rotate(3deg);
+}
+
+.y2k-webring {
+  color: #00ffff;
+  font-weight: 700;
+}
+
+.y2k-updated {
+  color: #c0c0c0;
+  font-size: 11px;
+}
+
+/* ---- Sparkle cursor trail (created by theme.js) -------------------------- */
+
+.y2k-sparkle {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  font: 16px/1 sans-serif;
+  text-shadow: 0 0 6px currentColor;
+  transform: translate(-50%, -50%);
+  animation: y2k-sparkle 0.9s ease-out forwards;
+}
+
+/* ---- Soon-to-exist account UI: sidebar, avatar menu, sign-in, admin ------ */
+
+[data-ui-theme="y2k"] .sidebar {
+  background: #c0c0c0;
+  border-right: 4px ridge #f0f0f0;
+}
+
+[data-ui-theme="y2k"] .sidebar-head {
+  background: var(--y2k-title);
+  color: #fff;
+}
+
+[data-ui-theme="y2k"] .sidebar-head .sidebar-title {
+  font-family: var(--y2k-wordart);
+  color: #fff;
+}
+
+[data-ui-theme="y2k"] .chat-list li,
+[data-ui-theme="y2k"] .chat-list a,
+[data-ui-theme="y2k"] .chat-list button {
+  border-radius: 0;
+  color: #0000ee;
+}
+
+[data-ui-theme="y2k"] .chat-list a,
+[data-ui-theme="y2k"] .chat-list li > :first-child {
+  text-decoration: underline;
+}
+
+[data-ui-theme="y2k"] .chat-list li:hover,
+[data-ui-theme="y2k"] .chat-list .active,
+[data-ui-theme="y2k"] .chat-list [aria-current] {
+  background: #000080;
+  color: #fff;
+}
+
+[data-ui-theme="y2k"] .chat-list li:hover *,
+[data-ui-theme="y2k"] .chat-list .active *,
+[data-ui-theme="y2k"] .chat-list [aria-current] * {
+  color: #fff;
+}
+
+[data-ui-theme="y2k"] .avatar:not(svg),
+[data-ui-theme="y2k"] .account-avatar {
+  border-radius: 0;
+  background: #ffff00;
+  color: #000;
+  border: 3px ridge #ff00ff;
+  font-weight: 700;
+  transform: rotate(-6deg);
+}
+
+[data-ui-theme="y2k"] .menu,
+[data-ui-theme="y2k"] .account-menu {
+  background: #c0c0c0;
+  border: 3px outset #f0f0f0;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 #000;
+}
+
+[data-ui-theme="y2k"] .menu a,
+[data-ui-theme="y2k"] .menu button,
+[data-ui-theme="y2k"] .account-menu-item {
+  border-radius: 0;
+  color: #000;
+}
+
+[data-ui-theme="y2k"] .menu a:hover,
+[data-ui-theme="y2k"] .menu button:hover,
+[data-ui-theme="y2k"] .account-menu-item:hover {
+  background: #000080;
+  color: #fff;
+}
+
+[data-ui-theme="y2k"] .signin-card {
+  position: relative;
+  background: #c0c0c0;
+  border: 3px outset #f0f0f0;
+  border-radius: 0;
+  padding-top: 40px;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.7);
+  transform: rotate(-1deg);
+}
+
+[data-ui-theme="y2k"] .signin-card::before {
+  content: "Welcome to ChatJevPT - Log On";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  padding: 0 8px;
+  background: var(--y2k-title);
+  color: #fff;
+  font: bold 13px/24px Tahoma, Verdana, var(--y2k-comic);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-ui-theme="y2k"] table {
+  border: 3px outset #f0f0f0;
+  border-collapse: separate;
+  border-spacing: 2px;
+  background: #c0c0c0;
+  color: #000;
+}
+
+[data-ui-theme="y2k"] th {
+  background: var(--y2k-title);
+  color: #fff;
+}
+
+[data-ui-theme="y2k"] td {
+  background: #fff;
+  color: #000;
+  border: 1px inset #808080;
+}
+
+[data-ui-theme="y2k"] tr:nth-child(even) td {
+  background: #ffffcc;
+}
+
+[data-ui-theme="y2k"] input:not([type="checkbox"]):not([type="radio"]),
+[data-ui-theme="y2k"] select {
+  background: #fff;
+  color: #000;
+  border: 2px inset #f0f0f0;
+  border-radius: 0;
+}
+
+/* ---- Small screens ------------------------------------------------------- */
+
+@media (max-width: 560px) {
+  [data-ui-theme="y2k"] .topbar {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  [data-ui-theme="y2k"] .brand span {
+    font-size: 21px;
+  }
+  [data-ui-theme="y2k"] .brand::after {
+    right: -14px;
+    top: -6px;
+  }
+  [data-ui-theme="y2k"] .theme-switch {
+    font-size: 13px;
+    padding: 2px 6px;
+  }
+  [data-ui-theme="y2k"] .msg-jev {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-ui-theme="y2k"] .msg-jev .avatar {
+    display: none;
+  }
+  [data-ui-theme="y2k"] .msg-jev > div:last-child {
+    transform: none;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.7);
+  }
+  [data-ui-theme="y2k"] .msg-user {
+    transform: rotate(0.6deg);
+  }
+  [data-ui-theme="y2k"] .answer {
+    font-size: 17px;
+  }
+  [data-ui-theme="y2k"] .composer {
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.7);
+  }
+  /* Keep the empty state short enough that the sticky composer doesn't cover it. */
+  [data-ui-theme="y2k"] .hero {
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  [data-ui-theme="y2k"] .hero-spark {
+    width: 26px;
+    height: 26px;
+  }
+  [data-ui-theme="y2k"] .hero h1 {
+    font-size: 28px;
+  }
+  [data-ui-theme="y2k"] .hero::after {
+    display: none;
+  }
+  [data-ui-theme="y2k"] .suggestions {
+    gap: 10px 8px;
+  }
+  [data-ui-theme="y2k"] .suggestions button {
+    font-size: 13px;
+    padding: 3px 9px;
+  }
+}
+
+@media (max-width: 400px) {
+  [data-ui-theme="y2k"] .brand .spark {
+    display: none;
+  }
+}
+
+/* ---- Motion -------------------------------------------------------------- */
+
+@keyframes y2k-stars {
+  to {
+    background-position: 210px 420px, 210px 420px, 210px 420px, 210px 420px, 210px 420px, 210px 420px, 210px 420px,
+      -330px 330px, -330px 330px, -330px 330px;
+  }
+}
+
+@keyframes y2k-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes y2k-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes y2k-blink {
+  50% {
+    visibility: hidden;
+  }
+}
+
+@keyframes y2k-slide {
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes y2k-shake {
+  25% {
+    transform: rotate(-1deg) translateX(-3px);
+  }
+  75% {
+    transform: rotate(-1deg) translateX(3px);
+  }
+}
+
+@keyframes y2k-sparkle {
+  to {
+    opacity: 0;
+    transform: translate(-50%, 18px) scale(0.3) rotate(180deg);
+  }
+}
+
+/* styles.css already switches every animation off; also keep the marquee readable. */
+@media (prefers-reduced-motion: reduce) {
+  [data-ui-theme="y2k"] .y2k-marquee {
+    white-space: normal;
+    text-align: center;
+  }
+  [data-ui-theme="y2k"] .y2k-marquee-track {
+    display: block;
+    animation: none;
+  }
+  [data-ui-theme="y2k"] .y2k-marquee-track span + span {
+    display: none;
+  }
+}
