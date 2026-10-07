@@ -7,17 +7,18 @@ Ask ChatJevPT a question and it answers the way a language model does: one token
 all. It answers typed questions with probabilities. So ChatJevPT asks Jev the same multiple-choice
 question over and over:
 
-> Given this question, the answer so far, and the characters remaining, what's the best next letter?
-> **A, B, C … Z, SPACE, or END?**
+> Given this question, the answer so far, and the characters remaining, what's the best next character?
+> **A–Z, a space, punctuation, or END?**
 
-The most probable letter wins (a coin flip on ties), gets appended, and Jev is asked again, up to an
-old-school tweet's **140 characters**. The answer types out live in a dark, Claude-style chat UI.
+The most probable character wins, gets appended, and Jev is asked again, up to an old-school tweet's
+**140 characters**. If letters tie, they go to a runoff round between just the tied options. Jev can
+also stop early once the answer is complete. The answer types out live in a dark, Claude-style chat UI.
 
 ## Features
 
 - **Live, letter-by-letter answers** with a running counter of characters, Jev calls and time.
 - **See inside the "model"**: hover (or tap, on mobile) any letter to see Jev's top five candidates and
-  their probabilities. Letters that won a tie are underlined.
+  their probabilities. Characters that won a tie are underlined.
 - **Stop, Retry, Copy and New chat**, like the chat apps it's imitating.
 - **Out-of-credits notice**: if the TypeSafe account runs dry, visitors see a clear "Out of Jev credits"
   message instead of a generic error.
@@ -38,12 +39,32 @@ browser (public/app.js)                    Vercel function (api/next.js)        
   one request per character, so the answer streams naturally, Stop is instant, and no single server
   request runs long.
 - **`api/next.js`**: validates input, calls Jev, and maps errors (rate limits, out of credits).
-- **`lib/jev.js`**: builds the Choice question and picks the letter. Code, not Jev, enforces the
-  mechanical rules: no leading or double spaces, and no `END` before anything has been written.
+- **`lib/jev.js`**: builds the questions and picks the character (details below).
 - The API key lives only on the server. The browser never sees it.
 
-Answers are uppercase letters and spaces only; the UI shows them in sentence case. Punctuation and
-digits could be added as extra Choice options.
+### What Jev is asked, per character
+
+One request with two questions about the same state (`question`, `answer_so_far`,
+`characters_remaining`):
+
+- **`next`, a Choice.** Each option's label is the text it would produce, like `"The sky is blu…"`,
+  not a bare letter. In testing, Jev treated labels like `A` and `B` as multiple-choice letters and
+  picked them regardless of meaning. Option order is shuffled every call for the same reason.
+- **`done`, a Noul.** "Does the answer already fully answer the question?" Above 0.6, the answer stops.
+
+Ties in `next` go to up to two runoff Choices between only the tied options. A coin flip only happens
+if they're still tied after that.
+
+Code, not Jev, enforces the mechanical rules, so Jev never sees an option that breaks them:
+
+- Capitalization at the start of sentences.
+- Spaces only after a real word (one-letter words only for "a" and "I"), never doubled.
+- Punctuation `. , ! ? : ; ' -` only where it makes sense, e.g. no space before a period. Quotes and
+  parentheses were left out because Jev looped on them.
+- No word repeated back to back, and no stopping in the middle of a word.
+
+Jev is good at short factual answers ("Paris", "Blue") and drifts into nonsense on long ones. That's
+the joke.
 
 ## Setup
 
