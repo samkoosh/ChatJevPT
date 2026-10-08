@@ -94,30 +94,39 @@
       <div class="thread" id="thread" aria-live="polite"></div>
 
       <div class="composer-wrap">
-        <section class="doornail-lab" id="doornail-lab" aria-label="Doornail lab" hidden>
-          <div class="doornail-lab-head">
-            <strong>Doornail lab</strong>
-            <span class="doornail-lab-state" id="doornail-lab-state"></span>
-            <button type="button" class="icon-btn" id="doornail-lab-close" aria-label="Close Doornail lab">
+        <section class="lab" id="lab" aria-label="Lab" hidden>
+          <div class="lab-head">
+            <strong>Lab</strong>
+            <div class="lab-levels" role="tablist" aria-label="Whose instructions">
+              <button type="button" class="lab-level" role="tab" data-level="doornail" aria-selected="true">Doornail</button>
+              <button type="button" class="lab-level" role="tab" data-level="rock" aria-selected="false">Rock</button>
+            </div>
+            <span class="lab-badge" id="lab-badge"></span>
+            <button type="button" class="icon-btn" id="lab-close" aria-label="Close the lab">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
-          <p class="doornail-lab-help">
-            Doornail's instructions for each character. Your edits apply right away to <em>your</em> Doornail answers; Save makes
-            them everyone's.
+          <p class="lab-help">
+            <span id="lab-name">Doornail</span>'s instructions for each character. Your edits apply right away to <em>your</em>
+            <span id="lab-name-2">Doornail</span> answers; Save makes them everyone's.
           </p>
-          <textarea id="doornail-lab-text" rows="4" maxlength="4000" spellcheck="false" aria-label="Doornail instructions"></textarea>
-          <div class="doornail-lab-request" id="doornail-lab-request" hidden>
-            <pre id="doornail-lab-request-json" tabindex="0" aria-label="The questions part of each Doornail request"></pre>
-            <p>The <code>questions</code> part of every Doornail request, with your current text. <code>END</code> is only offered once the answer has something in it.</p>
+          <textarea id="lab-text" rows="4" maxlength="4000" spellcheck="false" aria-label="Instructions"></textarea>
+          <div class="lab-request" id="lab-state-view" hidden>
+            <pre id="lab-state-json" tabindex="0" aria-label="The state part of each request, with example data"></pre>
+            <p id="lab-state-note"></p>
           </div>
-          <div class="doornail-lab-actions">
-            <button type="button" class="btn" id="doornail-lab-view" aria-pressed="false">Show full request</button>
-            <button type="button" class="btn primary" id="doornail-lab-save">Save for everyone</button>
-            <button type="button" class="btn" id="doornail-lab-revert">Discard my edits</button>
-            <button type="button" class="btn" id="doornail-lab-reset">Reset to default</button>
+          <div class="lab-request" id="lab-request" hidden>
+            <pre id="lab-request-json" tabindex="0" aria-label="The questions part of each request"></pre>
+            <p id="lab-request-note"></p>
           </div>
-          <p class="doornail-lab-status" id="doornail-lab-status" role="status" aria-live="polite"></p>
+          <div class="lab-actions">
+            <button type="button" class="btn" id="lab-state-toggle" aria-pressed="false">Show state</button>
+            <button type="button" class="btn" id="lab-view" aria-pressed="false">Show full request</button>
+            <button type="button" class="btn primary" id="lab-save">Save for everyone</button>
+            <button type="button" class="btn" id="lab-revert">Discard my edits</button>
+            <button type="button" class="btn" id="lab-reset">Reset to default</button>
+          </div>
+          <p class="lab-status" id="lab-status" role="status" aria-live="polite"></p>
         </section>
         <form class="composer" id="composer">
           <textarea id="input" rows="1" placeholder="Ask Jev anything…" maxlength="2000" autofocus></textarea>
@@ -132,7 +141,7 @@
               <button type="button" class="memory-toggle" id="memory-toggle" aria-pressed="true">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></svg>Memory
               </button>
-              <button type="button" class="lab-toggle" id="doornail-lab-toggle" aria-expanded="false" aria-controls="doornail-lab" title="Doornail lab: edit Doornail's instructions" hidden>
+              <button type="button" class="lab-toggle" id="lab-toggle" aria-expanded="false" aria-controls="lab" title="Lab: edit Doornail's and Rock's instructions" hidden>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3" /><path d="M7.5 15h9" /></svg>Lab
               </button>
             </div>

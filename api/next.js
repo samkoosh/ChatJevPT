@@ -1,8 +1,8 @@
-import { ANSWER_PATTERN, FORGETFUL_LEVELS, LEVELS, MAX_LENGTH, PLAYABLE_LEVELS, pickNext } from "../lib/jev.js";
+import { ANSWER_PATTERN, FORGETFUL_LEVELS, LAB_LEVELS, LEVELS, MAX_LENGTH, PLAYABLE_LEVELS, pickNext } from "../lib/jev.js";
 import { jevErrorResponse, missingKeyResponse } from "../lib/errors.js";
 import { authenticate, budgetResponse, charge, isAdmin } from "../lib/auth.js";
 import { chatHistory } from "../lib/chats.js";
-import { cleanInstructions, doornailInstructions } from "../lib/doornail.js";
+import { cleanInstructions, labInstructions } from "../lib/lab.js";
 
 export { isOutOfCredits } from "../lib/errors.js";
 
@@ -54,14 +54,14 @@ export async function handle(request, { systemOne } = {}) {
 
   let result;
   try {
-    // Admins can try draft Doornail instructions on their own answers (the in-chat Doornail lab).
-    let doornail;
-    if (level === "doornail") {
-      const draft = auth.user && isAdmin(auth.user) && body.doornailInstructions != null ? cleanInstructions(body.doornailInstructions) : null;
+    // Admins can try draft Doornail/Rock instructions on their own answers (the in-chat lab).
+    let instructions;
+    if (LAB_LEVELS.includes(level)) {
+      const draft = auth.user && isAdmin(auth.user) && body.labInstructions != null ? cleanInstructions(body.labInstructions) : null;
       if (draft?.error) return Response.json({ error: draft.error }, { status: 400 });
-      doornail = draft?.value ?? (await doornailInstructions());
+      instructions = draft?.value ?? (await labInstructions(level));
     }
-    result = await pickNext(question, answer, history, { level, memory, systemOne, doornailInstructions: doornail });
+    result = await pickNext(question, answer, history, { level, memory, systemOne, labInstructions: instructions });
   } catch (err) {
     return jevErrorResponse(err);
   }
