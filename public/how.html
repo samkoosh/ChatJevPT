@@ -45,6 +45,11 @@
         what the next character of the answer should be, and appends the winner. The four levels ("dumb as a ___")
         differ in how they ask.
       </p>
+      <p class="notice how-admin" id="admin-note" hidden>
+        <b>Admin:</b> every prompt under "What Jev is told" is editable here. <b>Save for everyone</b> applies it to
+        everyone's answers within 15 seconds; <b>Reset to default</b> puts the original back. Stump's screening, checks
+        and ranking prompts are shared with Post.
+      </p>
       <nav class="how-toc" aria-label="Levels">
         <a href="#level-doornail">Doornail</a><a href="#level-rock">Rock</a><a href="#level-stump">Stump</a
         ><a href="#level-post">Post</a><a href="#rating">Rating</a>
@@ -213,6 +218,7 @@
           <pre data-prompt="sense"></pre>
           <h4>Ranking</h4>
           <pre data-prompt="rank"></pre>
+          <p class="how-note">Written as the task, a blank line, then one rule per line starting with "- ". Runoffs add "These options tied in an earlier round; choose the single best one."</p>
         </details>
       </section>
 
@@ -258,7 +264,7 @@
           <summary>What Jev is told</summary>
           <h4>Kind</h4>
           <pre data-prompt="kind"></pre>
-          <p>Screening, the checks and ranking use Stump's prompts.</p>
+          <p>Screening, the checks and ranking use Stump's prompts (edit them under Stump).</p>
         </details>
       </section>
 

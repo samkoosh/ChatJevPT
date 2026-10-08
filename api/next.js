@@ -2,7 +2,7 @@ import { ANSWER_PATTERN, FORGETFUL_LEVELS, LAB_LEVELS, LEVELS, MAX_LENGTH, PLAYA
 import { jevErrorResponse, missingKeyResponse } from "../lib/errors.js";
 import { authenticate, budgetResponse, charge, isAdmin } from "../lib/auth.js";
 import { chatHistory } from "../lib/chats.js";
-import { cleanInstructions, labInstructions } from "../lib/lab.js";
+import { cleanInstructions, savedPrompts } from "../lib/lab.js";
 
 export { isOutOfCredits } from "../lib/errors.js";
 
@@ -54,14 +54,16 @@ export async function handle(request, { systemOne } = {}) {
 
   let result;
   try {
-    // Admins can try draft Doornail/Rock instructions on their own answers (the in-chat lab).
+    // Every level uses the prompts admins have saved; admins can also try draft Doornail/Rock
+    // instructions on their own answers (the in-chat lab).
+    const prompts = await savedPrompts();
     let instructions;
     if (LAB_LEVELS.includes(level)) {
       const draft = auth.user && isAdmin(auth.user) && body.labInstructions != null ? cleanInstructions(body.labInstructions) : null;
       if (draft?.error) return Response.json({ error: draft.error }, { status: 400 });
-      instructions = draft?.value ?? (await labInstructions(level));
+      instructions = draft?.value ?? prompts[level];
     }
-    result = await pickNext(question, answer, history, { level, memory, systemOne, labInstructions: instructions });
+    result = await pickNext(question, answer, history, { level, memory, systemOne, labInstructions: instructions, prompts });
   } catch (err) {
     return jevErrorResponse(err);
   }

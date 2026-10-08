@@ -6,4 +6,8 @@
   update that level's section and flowchart in the same change. Numbers (`data-n`) and prompts
   (`data-prompt`) are filled live from `/api/how` (`explainer()` in `lib/jev.js`); add new ones there.
   `test/how.test.js` fails if a level has no section or a number on the page doesn't match the code.
+- **Prompts are editable by admins on that page.** Every prompt step is a key in `PROMPT_DEFAULTS`
+  (`lib/jev.js`); saved edits come from `savedPrompts()` (`lib/lab.js`) and are passed to `pickNext` /
+  `rateAnswer` as `prompts`. A new prompt step should get a key there and a `data-prompt` block on
+  the page, rather than a hard-coded string.
 - Tests: `npm test` (unit, fake Jev) and `npm run test:ui` (headless Chromium, every `/api/*` spoofed).
