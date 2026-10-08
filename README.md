@@ -30,6 +30,12 @@ also stop early once the answer is complete. The answer types out live in a dark
   - **Stump** (default): the full pipeline described below.
   - **Post**: an experiment. Each character starts with a round that asks only what *kind* of
     character comes next, then runs Stump's checks within that kind (see [Post](#post-kind-first)).
+- **How it works** (`/how.html`, linked from the top bar and under the greeting): explains every level,
+  with flowcharts for Stump's and Post's checks. Its thresholds and prompts come live from the code
+  (`/api/how`). **Admins can edit every prompt step there** (screening, done, word_done, repeat_ok,
+  the sense check, ranking, Post's kind round, the rating, and Doornail's and Rock's instructions):
+  **Save for everyone** applies within 15 seconds, **Reset to default** puts the original back. Edits
+  are stored in the `settings` table (`prompt_<step>`; Doornail and Rock share the Lab's keys).
 - **Lab** (admins): a Lab button next to Memory opens Doornail's or Rock's instructions right in the
   chat (tabs switch between them, and switch the composer to that level). Edits apply immediately to
   your own answers at that level (sent with your requests; the server only accepts that from admins).

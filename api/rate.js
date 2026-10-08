@@ -2,6 +2,7 @@ import { ANSWER_PATTERN, MAX_LENGTH, rateAnswer } from "../lib/jev.js";
 import { jevErrorResponse, missingKeyResponse } from "../lib/errors.js";
 import { authenticate, budgetResponse, charge } from "../lib/auth.js";
 import { chatHistory } from "../lib/chats.js";
+import { savedPrompts } from "../lib/lab.js";
 
 // POST { question, answer, history, memory? } -> { label, score, tokens, cost }.
 // With accounts on: { question, answer, chatId }, and the history comes from the saved chat.
@@ -42,7 +43,7 @@ export async function handle(request, { systemOne } = {}) {
 
   let result;
   try {
-    result = await rateAnswer(question, answer, history, { systemOne });
+    result = await rateAnswer(question, answer, history, { systemOne, prompts: await savedPrompts() });
   } catch (err) {
     return jevErrorResponse(err);
   }

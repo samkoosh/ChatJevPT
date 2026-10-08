@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f1e1c" />
+    <title>How ChatJevPT works</title>
+    <meta name="description" content="How each ChatJevPT level (Doornail, Rock, Stump, Post) picks the next character with Jev." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <!-- Themes: apply the saved one before first paint (see public/theme.js). -->
+    <script>
+      try {
+        if (localStorage.getItem("jev-ui-theme") === "y2k") document.documentElement.dataset.uiTheme = "y2k";
+      } catch (e) {}
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/themes/y2k.css" />
+    <script src="/theme.js" defer></script>
+  </head>
+  <!--
+    Keep this page in step with lib/jev.js: when a level's pipeline changes, change its section and
+    flowchart here. Numbers in [data-n] and prompts in [data-prompt] are filled from /api/how (the
+    values written here are fallbacks, and test/how.test.js checks they match the code).
+  -->
+  <body class="how-page">
+    <header class="topbar">
+      <a class="brand" href="/" title="Back to chat">
+        <svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><use href="#spark" /></svg>
+        <span>ChatJevPT</span>
+      </a>
+      <span class="model-pill">How it works</span>
+    </header>
+
+    <main class="how">
+      <h1>How ChatJevPT works</h1>
+      <p class="how-lede">
+        Jev doesn't write text. It answers typed questions with probabilities. ChatJevPT asks it, over and over,
+        what the next character of the answer should be, and appends the winner. The four levels ("dumb as a ___")
+        differ in how they ask.
+      </p>
+      <p class="notice how-admin" id="admin-note" hidden>
+        <b>Admin:</b> every prompt under "What Jev is told" is editable here. <b>Save for everyone</b> applies it to
+        everyone's answers within 15 seconds; <b>Reset to default</b> puts the original back. Stump's screening, checks
+        and ranking prompts are shared with Post.
+      </p>
+      <nav class="how-toc" aria-label="Levels">
+        <a href="#level-doornail">Doornail</a><a href="#level-rock">Rock</a><a href="#level-stump">Stump</a
+        ><a href="#level-post">Post</a><a href="#rating">Rating</a>
+      </nav>
+
+      <section class="how-section" id="loop">
+        <h2>The loop, at every level</h2>
+        <p>
+          The browser drives it: one request per character, so the answer types out live and Stop is instant. Each
+          request goes through the chosen level, which returns one character, or END.
+        </p>
+        <div class="flow" role="img" aria-label="Flowchart: ask the level for one character; if END or the length limit, stop and rate; otherwise append and ask again.">
+          <div class="node code">Browser sends the question, the answer so far and (with memory on) earlier turns</div>
+          <div class="node jev">The level picks the next character <small>(sections below)</small></div>
+          <div class="node decision">
+            <span class="q">Is it END?</span>
+            <span class="exit stop">Yes → answer finished</span>
+          </div>
+          <div class="node code">Append the character and show it</div>
+          <div class="node decision">
+            <span class="q"><b data-n="MAX_LENGTH">200</b> characters reached?</span>
+            <span class="exit stop">Yes → answer finished</span>
+          </div>
+          <div class="node loop">No → ask again for the next character</div>
+        </div>
+        <p class="how-note">When the answer finishes, one more Jev call grades it (see <a href="#rating">Rating</a>).</p>
+      </section>
+
+      <section class="how-section" id="compare">
+        <h2>The levels side by side</h2>
+        <div class="how-table-wrap">
+          <table class="how-table">
+            <thead>
+              <tr><th></th><th>Doornail</th><th>Rock</th><th>Stump</th><th>Post</th></tr>
+            </thead>
+            <tbody>
+              <tr><th>Jev requests per character</th><td>1</td><td>1</td><td>2 (+ sense check, runoffs)</td><td>1–3 (+ sense check, runoffs)</td></tr>
+              <tr><th>Options</th><td>Every character</td><td>Every character</td><td>Only those code allows</td><td>Kinds first, then characters of that kind</td></tr>
+              <tr><th>Option labels</th><td>The character</td><td>The character, described as the answer it makes</td><td>The text it makes, e.g. "The sky is blu…"</td><td>Kind names, then as Stump</td></tr>
+              <tr><th>Real words only</th><td>No</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+              <tr><th>Checks (done, word, repeat, sense)</th><td>No</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+              <tr><th>Memory of earlier turns</th><td>No</td><td>No</td><td>Optional</td><td>Optional</td></tr>
+              <tr><th>Instructions editable in the Lab</th><td>Yes</td><td>Yes</td><td>No</td><td>No</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="how-section level" id="level-doornail">
+        <h2>Doornail <span class="tag">the naive one</span></h2>
+        <p>
+          One Choice per character over every character: A–Z, 0–9, a space, a line break, <code>. , ! ? : ; ' -</code>
+          and, once something is written, END. Each option is labelled with the character itself (a space is
+          labelled "space") and described in one line, like "The letter A." Jev sees only the question and the
+          answer so far. The most probable option wins; a tie is a coin flip.
+        </p>
+        <p>No word list, no rules, no checks, no memory. Whatever Jev says goes, including double spaces.</p>
+        <div class="flow" role="img" aria-label="Flowchart: one Choice over every character; the most probable wins.">
+          <div class="node jev">One Choice over every character</div>
+          <div class="node code">Most probable wins (coin flip on a tie)</div>
+        </div>
+        <details>
+          <summary>What Jev is told</summary>
+          <pre data-prompt="doornail"></pre>
+        </details>
+      </section>
+
+      <section class="how-section level" id="level-rock">
+        <h2>Rock</h2>
+        <p>
+          The same single Choice over the same characters, but each option is described as the answer it would make:
+          after "Pa", R is described as "Par", and END as "Pa" (the answer as it stands). The state also says how many
+          characters are left. Still no word list, no checks and no memory.
+        </p>
+        <div class="flow" role="img" aria-label="Flowchart: one Choice over every character, each described as the resulting answer; the most probable wins.">
+          <div class="node jev">One Choice over every character, each described as the answer it makes</div>
+          <div class="node code">Most probable wins (coin flip on a tie)</div>
+        </div>
+        <details>
+          <summary>What Jev is told</summary>
+          <pre data-prompt="rock"></pre>
+        </details>
+      </section>
+
+      <section class="how-section level" id="level-stump">
+        <h2>Stump <span class="tag">default</span></h2>
+        <p>
+          Code enforces the mechanical rules first, so Jev never sees an option that breaks them. Then two rounds:
+          a screening round of yes/no questions (one per candidate, plus the checks), and a ranking Choice among the
+          survivors.
+        </p>
+        <h3>The rules code enforces</h3>
+        <ul class="how-list">
+          <li><b>Real words only.</b> A letter is offered only if the word can still become one of the 60,000 most common English words, and a word can end only once it is one.</li>
+          <li><b>Capitals</b> at the start of sentences and lines (code owns case; Jev only picks letters).</li>
+          <li><b>Spacing:</b> spaces and line breaks only after a word or number, never doubled.</li>
+          <li><b>Numbers:</b> digits continue, <code>3.14</code> and <code>1,000</code> work, no letters glued onto numbers.</li>
+          <li><b>Punctuation</b> only where it fits: no space before a period, apostrophes and hyphens only inside words.</li>
+          <li><b>No stutters</b> ("sss", "ndndnd") and no word longer than <b data-n="MAX_WORD">18</b> letters.</li>
+        </ul>
+
+        <h3>One character, step by step</h3>
+        <div class="flow" role="img" aria-label="Stump flowchart, described in the steps below.">
+          <div class="node code">Code builds the allowed options</div>
+          <div class="fork">
+            <span class="fork-label">In parallel</span>
+            <div class="node jev">
+              <b>Screening request</b>
+              <ul>
+                <li>One yes/no per candidate: "still heading toward a sensible answer?"</li>
+                <li><b>done</b>: does the answer already fully answer the question? <small>(if it could end here)</small></li>
+                <li><b>word_done</b>: is this short word finished? <small>(while spelling a word of ≤ <span data-n="WORD_CHECK_MAX">4</span> letters)</small></li>
+                <li><b>repeat_ok</b>: does the question ask for repetition? <small>(when the answer starts repeating)</small></li>
+              </ul>
+            </div>
+            <div class="node jev">
+              <b>Sense check</b> <small>(after each finished word)</small>
+              <p>Sees only the answer text, no question: "does this make sense so far?"</p>
+            </div>
+          </div>
+          <div class="node decision">
+            <span class="q">Sense below <b data-n="SENSE_THRESHOLD">0.35</b>, and repetition not asked for?</span>
+            <span class="exit stop">Yes → stop: "Jev got too spicy"</span>
+          </div>
+          <div class="node decision">
+            <span class="q">Answer repeating and repeat_ok below <b data-n="REPEAT_THRESHOLD">0.5</b>?</span>
+            <span class="exit mask">Yes → the repeated word can't be finished</span>
+          </div>
+          <div class="node decision">
+            <span class="q">word_done below <b data-n="WORD_DONE_THRESHOLD">0.5</b>?</span>
+            <span class="exit mask">Yes → only letters (or ' -): keep spelling</span>
+          </div>
+          <div class="node decision">
+            <span class="q">done at or above <b data-n="DONE_THRESHOLD">0.6</b>?</span>
+            <span class="exit stop">Yes → END</span>
+          </div>
+          <div class="node code">
+            Screen: keep candidates scoring <b data-n="SCREEN_THRESHOLD">0.3</b> or more (at least the best
+            <span data-n="SCREEN_KEEP_MIN">2</span>), plus END if it's allowed
+          </div>
+          <div class="node decision">
+            <span class="q">Only one left?</span>
+            <span class="exit go">Yes → pick it</span>
+          </div>
+          <div class="node jev">
+            <b>Ranking Choice</b> over the survivors. Labels are the text each makes ("The sky is blu…"), shuffled every call,
+            each described with real words it leads to.
+          </div>
+          <div class="node decision">
+            <span class="q">A tie at the top?</span>
+            <span class="exit mask">Yes → up to <span data-n="MAX_RUNOFFS">2</span> runoffs between only the tied options, then a coin flip</span>
+          </div>
+          <div class="node go">The winner is the next character</div>
+        </div>
+        <details>
+          <summary>What Jev is told</summary>
+          <h4>Screening (per candidate)</h4>
+          <pre data-prompt="screen"></pre>
+          <h4>done</h4>
+          <pre data-prompt="done"></pre>
+          <h4>word_done</h4>
+          <pre data-prompt="word_done"></pre>
+          <h4>repeat_ok</h4>
+          <pre data-prompt="repeat_ok"></pre>
+          <h4>Sense check</h4>
+          <pre data-prompt="sense"></pre>
+          <h4>Ranking</h4>
+          <pre data-prompt="rank"></pre>
+          <p class="how-note">Written as the task, a blank line, then one rule per line starting with "- ". Runoffs add "These options tied in an earlier round; choose the single best one."</p>
+        </details>
+      </section>
+
+      <section class="how-section level" id="level-post">
+        <h2>Post <span class="tag">experiment</span></h2>
+        <p>
+          Post splits each character into "what kind?" and "which one?". It keeps all of Stump's rules and checks;
+          the checks just ride along with the kind round instead of the screening round.
+        </p>
+        <div class="flow" role="img" aria-label="Post flowchart, described in the steps below.">
+          <div class="node code">Code builds the allowed options (Stump's rules)</div>
+          <div class="fork">
+            <span class="fork-label">In parallel</span>
+            <div class="node jev">
+              <b>Kind Choice</b>: Letter, Number, Space, Line break, Punctuation or End of answer (only kinds code allows
+              here, each described in context), with Stump's <b>done</b>, <b>word_done</b> and <b>repeat_ok</b> in the same request
+            </div>
+            <div class="node jev"><b>Sense check</b> <small>(after each finished word)</small></div>
+          </div>
+          <div class="node decision">
+            <span class="q">Same checks as Stump: spicy, repeat, unfinished word, done</span>
+            <span class="exit stop">Spicy or done → stop; others rule kinds out</span>
+          </div>
+          <div class="node code">The most probable kind still allowed wins</div>
+          <div class="node decision">
+            <span class="q">A tie between kinds?</span>
+            <span class="exit mask">Yes → up to <span data-n="MAX_RUNOFFS">2</span> runoffs, then a coin flip</span>
+          </div>
+          <div class="node decision">
+            <span class="q">Only one character of that kind? <small>(space, line break, END, or a single fitting mark)</small></span>
+            <span class="exit go">Yes → pick it, no more requests</span>
+          </div>
+          <div class="node jev"><b>Screening</b>: Stump's yes/no per character, that kind's characters only</div>
+          <div class="node decision">
+            <span class="q">Only one passes?</span>
+            <span class="exit go">Yes → pick it</span>
+          </div>
+          <div class="node jev"><b>Ranking Choice</b> over the survivors, with runoffs on a tie, as in Stump</div>
+          <div class="node go">The winner is the next character</div>
+        </div>
+        <p class="how-note">A letter usually costs three requests (kind, screening, ranking); a space costs one. Hovering a Post character shows the kind round's probabilities too.</p>
+        <details>
+          <summary>What Jev is told</summary>
+          <h4>Kind</h4>
+          <pre data-prompt="kind"></pre>
+          <p>Screening, the checks and ranking use Stump's prompts (edit them under Stump).</p>
+        </details>
+      </section>
+
+      <section class="how-section" id="rating">
+        <h2>Rating</h2>
+        <p>
+          When an answer finishes, one Score question (with the chat's earlier turns, if memory is on) tags it
+          <b>Terrible, Bad, Solid, Good or Perfect</b>. It's the same at every level.
+        </p>
+        <details>
+          <summary>What Jev is told</summary>
+          <pre data-prompt="rating"></pre>
+        </details>
+      </section>
+
+      <p class="how-foot">
+        Numbers and prompts on this page come straight from the running code. Price: $<span data-n="PRICE_PER_MTOK">0.042</span>
+        per million input tokens (output is free). Memory sends up to <span data-n="MAX_HISTORY">6</span> earlier turns.
+      </p>
+    </main>
+
+    <svg width="0" height="0" style="position: absolute">
+      <symbol id="spark" viewBox="0 0 24 24">
+        <path
+          d="M12 1.5c.4 4.9 1.6 7.6 3.3 8.9 1.7 1.3 4.2 1.6 7.2 1.6-3 0-5.5.3-7.2 1.6-1.7 1.3-2.9 4-3.3 8.9-.4-4.9-1.6-7.6-3.3-8.9C7 12.3 4.5 12 1.5 12c3 0 5.5-.3 7.2-1.6C10.4 9.1 11.6 6.4 12 1.5Z"
+        />
+      </symbol>
+    </svg>
+    <script src="/how.js" type="module"></script>
+  </body>
+</html>

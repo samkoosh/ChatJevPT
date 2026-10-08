@@ -102,6 +102,24 @@ svg {
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px 10px;
+  text-decoration: none;
+}
+
+a.model-pill:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.hero-how {
+  flex-basis: 100%;
+  text-align: center;
+  margin-top: -8px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.hero-how:hover {
+  color: var(--accent);
 }
 
 .cost-meter {
@@ -166,6 +184,7 @@ main.empty {
 
 .hero {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 14px;
@@ -1659,4 +1678,382 @@ body.sidebar-collapsed .sidebar {
     min-width: 0;
     align-items: flex-end;
   }
+}
+
+/* "How it works" page (public/how.html) */
+.how-page .brand {
+  color: inherit;
+  text-decoration: none;
+}
+
+.how {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 16px 64px;
+}
+
+.how h1 {
+  margin: 12px 0 8px;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 34px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.how h2 {
+  margin: 0 0 10px;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+}
+
+.how h3 {
+  margin: 22px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.how h4 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.how a {
+  color: var(--accent);
+}
+
+.how code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  background: var(--surface);
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+.how-lede {
+  color: var(--text-dim);
+  font-size: 16px;
+  margin: 0 0 16px;
+}
+
+.how-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.how .how-toc a {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.how .how-toc a:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.how-section {
+  padding: 28px 0 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  scroll-margin-top: 64px;
+}
+
+.how-section .tag {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  vertical-align: middle;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.how-note,
+.how-foot {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.how-foot {
+  margin-top: 40px;
+}
+
+.how-list {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.how-list li + li {
+  margin-top: 4px;
+}
+
+.how-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.how-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 560px;
+}
+
+.how-table th,
+.how-table td {
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+.how-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.how-table thead th {
+  color: var(--text-dim);
+  font-weight: 600;
+  background: var(--surface);
+}
+
+.how-table tbody th {
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.how details {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: var(--surface);
+}
+
+.how summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.how pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 12.5px/1.55 var(--mono);
+  color: var(--text-dim);
+}
+
+/* Flowcharts: a column of nodes joined by arrows. Decisions carry their "yes" exit on the right
+   (below, on a phone); "no" carries on down. Colour says who does the step. */
+.flow {
+  --code: var(--border-strong);
+  --jev: var(--accent);
+  --stop: var(--danger);
+  --go: #7fb685;
+  --mask: #c9a85a;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  margin: 16px 0 8px;
+}
+
+.flow .node {
+  position: relative;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--code);
+  background: var(--surface);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.flow > .node + .node::before,
+.flow > .fork + .node::before,
+.flow > .node + .fork::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -24px;
+  height: 18px;
+  border-left: 2px solid var(--text-faint);
+}
+
+.flow > .node + .node::after,
+.flow > .fork + .node::after,
+.flow > .node + .fork::after {
+  content: "";
+  position: absolute;
+  left: calc(50% - 4px);
+  top: -9px;
+  border: 5px solid transparent;
+  border-top: 6px solid var(--text-faint);
+  border-bottom: 0;
+}
+
+.flow .node.jev {
+  border-color: var(--jev);
+  background: var(--accent-soft);
+}
+
+.flow .node.decision {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  justify-content: space-between;
+  border-style: dashed;
+}
+
+.flow .node.decision .q::before {
+  content: "◆";
+  margin-right: 8px;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.flow .exit {
+  font-size: 13px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  white-space: normal;
+}
+
+.flow .exit.stop {
+  color: var(--stop);
+}
+
+.flow .exit.go,
+.flow .node.go {
+  color: var(--go);
+}
+
+.flow .exit.mask {
+  color: var(--mask);
+}
+
+.flow .node.go {
+  border-color: var(--go);
+}
+
+.flow .node.loop {
+  border-style: dotted;
+  color: var(--text-dim);
+}
+
+.flow .node small,
+.flow .fork small {
+  color: var(--text-dim);
+}
+
+.flow .node ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.flow .node p {
+  margin: 4px 0 0;
+}
+
+.flow .fork {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+  padding: 22px 10px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.flow .fork-label {
+  position: absolute;
+  top: 4px;
+  left: 12px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@media (max-width: 560px) {
+  .how h1 {
+    font-size: 28px;
+  }
+  .flow .fork {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Admin prompt editors on the "How it works" page */
+.notice.how-admin {
+  display: block;
+  margin: 0 0 16px;
+}
+
+.notice.how-admin[hidden] {
+  display: none;
+}
+
+.prompt-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prompt-text {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text);
+  font: 12.5px/1.55 var(--mono);
+}
+
+.prompt-text:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.prompt-editor.edited .prompt-text {
+  border-color: #c9a85a;
+}
+
+.prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompt-status {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.how details.has-edits > summary::after {
+  content: "edited";
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: #c9a85a;
+  border: 1px solid currentColor;
 }
