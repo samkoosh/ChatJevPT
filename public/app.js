@@ -104,9 +104,9 @@ async function api(method, path, body, signal) {
 // A saved chat sends its id; the server ignores client history then.
 const context = (priorTurns, savedChat) => (savedChat ? { chatId: savedChat } : { history: priorTurns });
 
-function fetchNext(question, answer, priorTurns, signal, savedChat, { level, memory, doornailInstructions }) {
+function fetchNext(question, answer, priorTurns, signal, savedChat, { level, memory, labInstructions }) {
   const body = { question, answer, level, memory, ...context(priorTurns, savedChat) };
-  if (doornailInstructions != null) body.doornailInstructions = doornailInstructions;
+  if (labInstructions != null) body.labInstructions = labInstructions;
   return api("POST", "/api/next", body, signal);
 }
 
@@ -151,6 +151,8 @@ for (const b of levelButtons) {
     prefs.level = b.dataset.level;
     savePref("jev-level", prefs.level);
     renderPrefs();
+    // An open lab follows to Doornail or Rock.
+    if (!labPanel.hidden && LAB_LEVELS.includes(prefs.level)) showLabLevel(prefs.level);
   });
 }
 memoryToggle.addEventListener("click", () => {
@@ -160,58 +162,100 @@ memoryToggle.addEventListener("click", () => {
 });
 renderPrefs();
 
-// Doornail lab (admins): edit Doornail's instructions from the chat. The draft lives in this browser and
-// is sent with the admin's own Doornail requests; Save makes it everyone's.
-const labToggle = document.getElementById("doornail-lab-toggle");
-const labPanel = document.getElementById("doornail-lab");
-const labText = document.getElementById("doornail-lab-text");
-const labStatus = document.getElementById("doornail-lab-status");
-const lab = { saved: null, fallback: null, questions: null, loading: null, showRequest: false };
+// Lab (admins): edit Doornail's and Rock's instructions from the chat. Each level's draft lives in
+// this browser and is sent with the admin's own answers at that level; Save makes it everyone's.
+const LAB_LEVELS = ["doornail", "rock"];
+const labToggle = document.getElementById("lab-toggle");
+const labPanel = document.getElementById("lab");
+const labText = document.getElementById("lab-text");
+const labStatus = document.getElementById("lab-status");
+const labTabs = [...document.querySelectorAll(".lab-level")];
+// Per level: what's saved, the default, the example request, the draft, and the load in flight.
+const labs = Object.fromEntries(LAB_LEVELS.map((l) => [l, { saved: null, fallback: null, request: null, example: null, draft: null, loading: null }]));
+let labLevel = "doornail";
+let labView = null; // null (editing), "state" or "questions"
+
+const draftKey = (level) => `jev-lab-draft-${level}`;
+function readDraft(level) {
+  try {
+    // Doornail's drafts were saved under the old name before Rock got a lab too.
+    return localStorage.getItem(draftKey(level)) ?? (level === "doornail" ? localStorage.getItem("jev-doornail-draft") : null);
+  } catch {
+    return null;
+  }
+}
+function writeDraft(level, text) {
+  try {
+    localStorage.removeItem("jev-doornail-draft");
+    if (text == null) localStorage.removeItem(draftKey(level));
+    else localStorage.setItem(draftKey(level), text);
+  } catch {}
+}
 
 const isAdminUser = () => showAdmin();
-// The draft to send, or null when it's the same as what's saved (or there's no lab).
-function labDraft() {
-  if (!isAdminUser() || lab.saved == null) return null;
-  const draft = labText.value;
+// The draft to send for a level, or null when it's the same as what's saved (or there's no lab).
+function labDraft(level) {
+  const lab = labs[level];
+  if (!lab || !isAdminUser() || lab.saved == null) return null;
+  const draft = lab.draft ?? lab.saved;
   return draft.trim() && draft !== lab.saved ? draft : null;
 }
 
-// The questions part of the request, with whatever is in the editor right now.
-function renderLabRequest() {
-  const view = lab.showRequest && lab.questions;
+// The state and questions parts of the request, for the example, with the editor's text.
+function renderLabViews() {
+  const lab = labs[labLevel];
+  const view = lab.request ? labView : null;
   labText.hidden = Boolean(view);
-  document.getElementById("doornail-lab-request").hidden = !view;
-  const button = document.getElementById("doornail-lab-view");
-  button.textContent = view ? "Edit instructions" : "Show full request";
-  button.setAttribute("aria-pressed", String(Boolean(view)));
+  document.getElementById("lab-state-view").hidden = view !== "state";
+  document.getElementById("lab-request").hidden = view !== "questions";
+  for (const [id, name, label] of [["lab-state-toggle", "state", "Show state"], ["lab-view", "questions", "Show full request"]]) {
+    const button = document.getElementById(id);
+    button.textContent = view === name ? "Edit instructions" : label;
+    button.setAttribute("aria-pressed", String(view === name));
+  }
   if (!view) return;
-  const { type, criteria } = lab.questions.next;
-  const questions = { next: { type, instructions: labText.value.trim() ? labText.value : lab.fallback, criteria } };
-  document.getElementById("doornail-lab-request-json").textContent = JSON.stringify(questions, null, 2);
+  const name = LEVEL_NAMES[labLevel];
+  const example = `made-up data: "${lab.example.question}", partway through the answer "${lab.example.answer}"`;
+  if (view === "state") {
+    document.getElementById("lab-state-json").textContent = JSON.stringify(lab.request.state, null, 2);
+    document.getElementById("lab-state-note").textContent = `The state sent with every ${name} character, shown with ${example}. Real requests use the actual question and answer so far. Not editable.`;
+  } else {
+    const { type, criteria } = lab.request.questions.next;
+    const questions = { next: { type, instructions: labText.value.trim() ? labText.value : lab.fallback, criteria } };
+    document.getElementById("lab-request-json").textContent = JSON.stringify(questions, null, 2);
+    document.getElementById("lab-request-note").textContent =
+      labLevel === "rock"
+        ? `The questions part of every Rock request, with your current text, for the same ${example}. Each description is the answer so far plus that option; END is only offered once the answer has something in it.`
+        : "The questions part of every Doornail request, with your current text. END is only offered once the answer has something in it.";
+  }
 }
 
 function renderLab() {
-  renderLabRequest();
-  const draft = labDraft();
-  document.getElementById("doornail-lab-state").textContent =
-    draft ? "Your edits (only you)" : lab.saved === lab.fallback ? "Default" : "Saved for everyone";
-  document.getElementById("doornail-lab-save").disabled = !draft;
-  document.getElementById("doornail-lab-revert").disabled = !draft;
-  document.getElementById("doornail-lab-reset").disabled = lab.saved === lab.fallback && !draft;
-  labToggle.classList.toggle("edited", Boolean(draft));
+  const lab = labs[labLevel];
+  for (const t of labTabs) t.setAttribute("aria-selected", String(t.dataset.level === labLevel));
+  document.getElementById("lab-name").textContent = LEVEL_NAMES[labLevel];
+  document.getElementById("lab-name-2").textContent = LEVEL_NAMES[labLevel];
+  labText.setAttribute("aria-label", `${LEVEL_NAMES[labLevel]} instructions`);
+  renderLabViews();
+  const draft = labDraft(labLevel);
+  document.getElementById("lab-badge").textContent =
+    lab.saved == null ? "" : draft ? "Your edits (only you)" : lab.saved === lab.fallback ? "Default" : "Saved for everyone";
+  document.getElementById("lab-save").disabled = !draft;
+  document.getElementById("lab-revert").disabled = !draft;
+  document.getElementById("lab-reset").disabled = lab.saved == null || (lab.saved === lab.fallback && !draft);
+  labToggle.classList.toggle("edited", LAB_LEVELS.some((l) => labDraft(l)));
 }
 
-function loadLab() {
-  lab.loading ??= api("GET", "/api/admin/doornail")
+function loadLab(level = labLevel) {
+  const lab = labs[level];
+  lab.loading ??= api("GET", `/api/admin/lab?level=${level}`)
     .then((data) => {
       lab.saved = data.instructions;
       lab.fallback = data.default;
-      lab.questions = data.questions;
-      let draft = null;
-      try {
-        draft = localStorage.getItem("jev-doornail-draft");
-      } catch {}
-      labText.value = draft ?? data.instructions;
+      lab.request = data.request;
+      lab.example = data.example;
+      lab.draft = readDraft(level);
+      if (level === labLevel) labText.value = lab.draft ?? data.instructions;
       renderLab();
     })
     .catch(() => {
@@ -220,27 +264,39 @@ function loadLab() {
   return lab.loading;
 }
 
+// Show one level's instructions. The lab edits that level's answers, so it also switches to it.
+function showLabLevel(level) {
+  labLevel = level;
+  labStatus.textContent = "";
+  const lab = labs[level];
+  labText.value = lab.saved == null ? "" : lab.draft ?? lab.saved;
+  if (prefs.level !== level) {
+    prefs.level = level;
+    savePref("jev-level", level);
+    renderPrefs();
+  }
+  renderLab();
+  return loadLab(level);
+}
+
 function setLabOpen(open) {
   labPanel.hidden = !open;
   labToggle.setAttribute("aria-expanded", String(open));
   if (!open) return;
-  // The lab is about Doornail, so opening it switches to Doornail.
-  if (prefs.level !== "doornail") {
-    prefs.level = "doornail";
-    savePref("jev-level", "doornail");
-    renderPrefs();
-  }
-  loadLab()?.then(() => labText.focus());
+  // Opening on Stump or Post switches to Doornail; on Doornail or Rock, the lab shows that one.
+  showLabLevel(LAB_LEVELS.includes(prefs.level) ? prefs.level : "doornail")?.then(() => labText.focus());
 }
 
 async function labSave(instructions, message) {
+  const level = labLevel;
+  const lab = labs[level];
   try {
-    const data = await api("PUT", "/api/admin/doornail", { instructions });
+    const data = await api("PUT", "/api/admin/lab", { level, instructions });
     lab.saved = data.instructions;
-    labText.value = data.instructions;
-    try {
-      localStorage.removeItem("jev-doornail-draft");
-    } catch {}
+    lab.request = data.request;
+    lab.draft = null;
+    writeDraft(level, null);
+    if (level === labLevel) labText.value = data.instructions;
     labStatus.textContent = message;
   } catch (err) {
     labStatus.textContent = err.message;
@@ -249,27 +305,31 @@ async function labSave(instructions, message) {
 }
 
 labToggle.addEventListener("click", () => setLabOpen(labPanel.hidden));
-document.getElementById("doornail-lab-view").addEventListener("click", () => {
-  lab.showRequest = !lab.showRequest;
-  renderLab();
-  if (!lab.showRequest) labText.focus();
-});
-document.getElementById("doornail-lab-close").addEventListener("click", () => setLabOpen(false));
+for (const t of labTabs) t.addEventListener("click", () => showLabLevel(t.dataset.level));
+for (const [id, name] of [["lab-state-toggle", "state"], ["lab-view", "questions"]]) {
+  document.getElementById(id).addEventListener("click", () => {
+    labView = labView === name ? null : name;
+    renderLab();
+    if (!labView) labText.focus();
+  });
+}
+document.getElementById("lab-close").addEventListener("click", () => setLabOpen(false));
 labText.addEventListener("input", () => {
-  try {
-    if (labText.value === lab.saved) localStorage.removeItem("jev-doornail-draft");
-    else localStorage.setItem("jev-doornail-draft", labText.value);
-  } catch {}
+  const lab = labs[labLevel];
+  lab.draft = labText.value === lab.saved ? null : labText.value;
+  writeDraft(labLevel, lab.draft);
   labStatus.textContent = "";
   renderLab();
 });
-document.getElementById("doornail-lab-save").addEventListener("click", () => labSave(labText.value, "Saved. Everyone's Doornail answers use this now."));
-document.getElementById("doornail-lab-reset").addEventListener("click", () => labSave(null, "Back to the default instructions for everyone."));
-document.getElementById("doornail-lab-revert").addEventListener("click", () => {
+document.getElementById("lab-save").addEventListener("click", () =>
+  labSave(labText.value, `Saved. Everyone's ${LEVEL_NAMES[labLevel]} answers use this now.`),
+);
+document.getElementById("lab-reset").addEventListener("click", () => labSave(null, "Back to the default instructions for everyone."));
+document.getElementById("lab-revert").addEventListener("click", () => {
+  const lab = labs[labLevel];
   labText.value = lab.saved;
-  try {
-    localStorage.removeItem("jev-doornail-draft");
-  } catch {}
+  lab.draft = null;
+  writeDraft(labLevel, null);
   labStatus.textContent = "";
   renderLab();
 });
@@ -385,8 +445,8 @@ async function ask(question) {
   setBusy(true);
   const started = performance.now();
   const priorTurns = history.slice(-6);
-  // Fixed for this answer, including an admin's Doornail lab draft.
-  const settings = { level: prefs.level, memory: prefs.memory && !FORGETFUL.includes(prefs.level), doornailInstructions: prefs.level === "doornail" ? labDraft() : null };
+  // Fixed for this answer, including an admin's lab draft for Doornail or Rock.
+  const settings = { level: prefs.level, memory: prefs.memory && !FORGETFUL.includes(prefs.level), labInstructions: labDraft(prefs.level) };
   const myChat = chatEpoch;
   let savedChat = signedIn() ? activeChatId : null;
   let lostSession = null;
@@ -641,7 +701,7 @@ function applyAccount() {
   page.classList.toggle("previewing", previewing);
   labToggle.hidden = !showAdmin();
   if (!showAdmin()) setLabOpen(false);
-  if (role === "admin") loadLab();
+  if (role === "admin") for (const level of LAB_LEVELS) loadLab(level);
   renderUsage();
   renderChats();
 }

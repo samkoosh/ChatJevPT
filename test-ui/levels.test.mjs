@@ -77,7 +77,7 @@ test("Rock: sits between Doornail and Stump, requests say rock, and memory is of
   const fake = scripted("Hi");
   await page.route("**/api/next", fake);
   await ask(page, "Q");
-  assert.ok(fake.requests.every((r) => r.level === "rock" && r.memory === false && !("doornailInstructions" in r)));
+  assert.ok(fake.requests.every((r) => r.level === "rock" && r.memory === false && !("labInstructions" in r)));
   assert.match(await page.locator(".meta .level-tag").textContent(), /Rock/);
 });
 

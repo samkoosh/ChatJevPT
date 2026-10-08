@@ -58,12 +58,12 @@ test("regular people still see 5 max", async () => {
 test("preview as non-admin hides admin tools and shows regular limits, then exits", async () => {
   const { page } = await open();
   await page.waitForFunction(() => document.getElementById("chat-count").textContent === "6", null, T);
-  assert.ok(await page.locator("#doornail-lab-toggle").isVisible());
+  assert.ok(await page.locator("#lab-toggle").isVisible());
 
   await openMenu(page);
   await page.click("#preview-toggle");
   await page.locator("#preview-banner").waitFor({ state: "visible", ...T });
-  assert.ok(await page.locator("#doornail-lab-toggle").isHidden(), "Lab hidden");
+  assert.ok(await page.locator("#lab-toggle").isHidden(), "Lab hidden");
   assert.equal(await page.locator("#chat-count").textContent(), "6/5");
   assert.ok(await page.locator("#sidebar-new").isDisabled(), "New chat greyed out at the regular limit");
   await openMenu(page);
@@ -81,14 +81,14 @@ test("preview as non-admin hides admin tools and shows regular limits, then exit
   await page.fill("#input", "Q");
   await page.click("#send");
   await page.waitForFunction(() => !document.querySelector("#send.stop"), null, T);
-  assert.ok(fake.requests.every((r) => !("doornailInstructions" in r)));
+  assert.ok(fake.requests.every((r) => !("labInstructions" in r)));
 
   // Survives a reload (same tab), then Exit preview restores everything.
   await page.reload();
   await page.locator("#preview-banner").waitFor({ state: "visible", ...T });
   await page.click("#preview-exit");
   await page.locator("#preview-banner").waitFor({ state: "hidden", ...T });
-  assert.ok(await page.locator("#doornail-lab-toggle").isVisible());
+  assert.ok(await page.locator("#lab-toggle").isVisible());
   assert.equal(await page.locator("#chat-count").textContent(), "6");
   await openMenu(page);
   assert.ok(await page.locator("#admin-link").isVisible());

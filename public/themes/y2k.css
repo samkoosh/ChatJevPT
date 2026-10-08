@@ -1226,21 +1226,37 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
   border: 1px solid #000;
 }
 
-/* Doornail lab: a Notepad window. */
-[data-ui-theme="y2k"] .doornail-lab {
+/* Lab: a Notepad window. */
+[data-ui-theme="y2k"] .lab {
   background: #c0c0c0;
   border: 3px outset #f0f0f0;
   border-radius: 0;
   color: #000;
 }
 
-[data-ui-theme="y2k"] .doornail-lab-help,
-[data-ui-theme="y2k"] .doornail-lab-state,
-[data-ui-theme="y2k"] .doornail-lab-status {
+[data-ui-theme="y2k"] .lab-levels {
+  border: 2px inset #f0f0f0;
+  border-radius: 0;
+}
+
+[data-ui-theme="y2k"] .lab-level {
+  border-radius: 0;
+  color: #000;
+  font-family: "Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive;
+}
+
+[data-ui-theme="y2k"] .lab-level[aria-selected="true"] {
+  background: #000080;
+  color: #fff;
+}
+
+[data-ui-theme="y2k"] .lab-help,
+[data-ui-theme="y2k"] .lab-badge,
+[data-ui-theme="y2k"] .lab-status {
   color: #000;
 }
 
-[data-ui-theme="y2k"] .doornail-lab textarea {
+[data-ui-theme="y2k"] .lab textarea {
   background: #fff;
   color: #000;
   border: 2px inset #f0f0f0;
@@ -1281,7 +1297,7 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
   color: #000;
 }
 
-[data-ui-theme="y2k"] .doornail-lab-request pre {
+[data-ui-theme="y2k"] .lab-request pre {
   background: #000;
   color: #00ff66;
   border: 2px inset #f0f0f0;
@@ -1289,7 +1305,7 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
   font-family: "Courier New", monospace;
 }
 
-[data-ui-theme="y2k"] .doornail-lab-request p {
+[data-ui-theme="y2k"] .lab-request p {
   color: #000;
 }
 

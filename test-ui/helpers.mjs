@@ -86,13 +86,16 @@ export async function openPage(browser, baseURL, { device, setup, path = "/" } =
   );
   // Context routes run after page routes, so this only fires when a test
   // didn't route that /api/* path. Accounts are off, ratings are free and "Good",
-  // and Doornail's instructions are the default (an admin page loads them for the Doornail lab);
+  // and Doornail's and Rock's instructions are the defaults (an admin page loads them for the lab);
   // anything else is a leak, aborted so nothing reaches the server.
   await context.route(/\/api\//, (route) => {
     const { pathname } = new URL(route.request().url());
     if (pathname === "/api/me") return fulfill(route, 200, { authEnabled: false });
     if (pathname === "/api/rate") return fulfill(route, 200, DEFAULT_RATING);
-    if (pathname === "/api/admin/doornail" && route.request().method() === "GET") return fulfill(route, 200, DEFAULT_DOORNAIL);
+    if (pathname === "/api/admin/lab" && route.request().method() === "GET") {
+      const level = new URL(route.request().url()).searchParams.get("level");
+      return fulfill(route, 200, labFor(level, LAB_DEFAULTS[level]));
+    }
     leaks.push(`unrouted ${route.request().method()} ${route.request().url()}`);
     return route.abort();
   });
@@ -125,8 +128,24 @@ export const TOKENS_PER_CALL = 100;
 export const DEFAULT_RATING = { label: "Good", score: 3.1, tokens: 0, cost: 0 };
 export const DOORNAIL_DEFAULT = "Which character should come next in `answer_so_far` to answer `question`?";
 export const DOORNAIL_CRITERIA = { A: "The letter A.", B: "The letter B.", space: "A space between words (as though the keyboard's space bar was pressed).", END: "The end of the answer." };
-export const doornailQuestionsFor = (instructions) => ({ next: { type: "choice", instructions, criteria: DOORNAIL_CRITERIA } });
-export const DEFAULT_DOORNAIL = { instructions: DOORNAIL_DEFAULT, default: DOORNAIL_DEFAULT, isDefault: true, questions: doornailQuestionsFor(DOORNAIL_DEFAULT) };
+export const ROCK_DEFAULT = "Each option is `answer_so_far` with one more character added; END keeps it as it is and finishes it. Which option best continues the answer to `question`?";
+export const ROCK_CRITERIA = { A: "PaA", B: "PaB", space: "Pa ", END: "Pa" };
+export const LAB_DEFAULTS = { doornail: DOORNAIL_DEFAULT, rock: ROCK_DEFAULT };
+export const LAB_EXAMPLE = { question: "What is the capital of France?", answer: "Pa" };
+export const LAB_STATES = {
+  doornail: { question: LAB_EXAMPLE.question, answer_so_far: "Pa" },
+  rock: { question: LAB_EXAMPLE.question, answer_so_far: "Pa", characters_remaining: 198 },
+};
+const LAB_CRITERIA = { doornail: DOORNAIL_CRITERIA, rock: ROCK_CRITERIA };
+// What GET/PUT /api/admin/lab returns for a level with these saved instructions.
+export const labFor = (level, instructions) => ({
+  level,
+  instructions,
+  default: LAB_DEFAULTS[level],
+  isDefault: instructions === LAB_DEFAULTS[level],
+  example: LAB_EXAMPLE,
+  request: { state: LAB_STATES[level], questions: { next: { type: "choice", instructions, criteria: LAB_CRITERIA[level] } } },
+});
 export const COST_PER_CALL = 0.0001;
 
 function topFor(pick) {

@@ -30,10 +30,13 @@ also stop early once the answer is complete. The answer types out live in a dark
   - **Stump** (default): the full pipeline described below.
   - **Post**: an experiment. Each character starts with a round that asks only what *kind* of
     character comes next, then runs Stump's checks within that kind (see [Post](#post-kind-first)).
-- **Doornail lab** (admins): a Lab button next to Memory opens Doornail's instructions right in the chat.
-  Edits apply immediately to your own Doornail answers (sent with your requests; the server only accepts
-  that from admins). **Save for everyone** stores them (a `settings` table) for all Doornail answers,
+- **Lab** (admins): a Lab button next to Memory opens Doornail's or Rock's instructions right in the
+  chat (tabs switch between them, and switch the composer to that level). Edits apply immediately to
+  your own answers at that level (sent with your requests; the server only accepts that from admins).
+  **Save for everyone** stores them (a `settings` table) for everyone's answers at that level,
   **Reset to default** puts the original back, **Discard my edits** goes back to what's saved.
+  **Show state** shows the `state` each request carries, filled with made-up data (not editable);
+  **Show full request** shows the `questions` part with your current text.
 - **Memory toggle**: with memory on (the default), earlier turns in the chat are sent along, so "What
   about Germany?" after "What is the capital of France?" gets "Berlin". Off, each question stands alone
   (for the answer and its rating). Doornail and Rock never use memory. New chat starts fresh either way.
@@ -217,7 +220,7 @@ allowance ($0.25 by default) and up to 5 saved chats.
   The allowance is a lifetime total ($0.25 unless you set theirs on the admin page; it doesn't reset).
   Once it's used, they see "Allowance used up" and can ask you for more.
 - **Preview as non-admin**: admins can switch the page (avatar menu) to look the way it does for a
-  regular person: no Admin link or Doornail lab, usage against the $0.25 allowance, the 5-chat limit, and a
+  regular person: no Admin link or lab, usage against the $0.25 allowance, the 5-chat limit, and a
   banner with "Exit preview". It's only a view; the server still treats them as an admin.
 - **Admins have no budget limit.** Everyone with role admin, including everyone in `ADMIN_EMAILS`, is
   never blocked; their usage is still recorded and shown ("Usage: $X total · no limit").
