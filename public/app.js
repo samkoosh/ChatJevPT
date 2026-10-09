@@ -225,7 +225,7 @@ function renderLabViews() {
     document.getElementById("lab-request-json").textContent = JSON.stringify(questions, null, 2);
     document.getElementById("lab-request-note").textContent =
       labLevel === "rock"
-        ? `The questions part of every Rock request, with your current text, for the same ${example}. Each description is the answer so far plus that option; END is only offered once the answer has something in it.`
+        ? `The questions part of every Rock request, with your current text, for the same ${example}. Each option is the answer so far plus one character; the (done) option is only offered once the answer has something in it.`
         : "The questions part of every Doornail request, with your current text. END is only offered once the answer has something in it.";
   }
 }
