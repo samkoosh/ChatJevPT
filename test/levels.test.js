@@ -96,6 +96,9 @@ test("Rock's tournament: the top 5 of round one go on, then the top 2, and the f
   assert.deepEqual(requests[2].slice().sort(), ['"B"', '"E"']);
   assert.equal(r.pick, "B", "the final's winner, not round one's");
   assert.equal(r.tokens, 30, "all three rounds are counted");
+  assert.deepEqual(r.rounds.map((round) => round.size), [requests[0].length, 5, 2], "each round's size, for the tooltip");
+  assert.deepEqual(r.rounds[0].top.map((t) => t.option), ["A", "B", "C", "D", "E"]);
+  assert.deepEqual(r.rounds[2].top, [{ option: "B", p: 0.7 }, { option: "E", p: 0.3 }]);
 });
 
 test("pickNext: Doornail ignores memory; Stump drops history when memory is off", async () => {

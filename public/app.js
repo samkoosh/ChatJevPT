@@ -467,7 +467,7 @@ async function ask(question) {
     if (signedIn() && !savedChat) savedChat = await createChat(controller.signal);
     while (answer.length < MAX_LENGTH) {
       const step = await fetchNext(question, answer, priorTurns, controller.signal, savedChat, settings);
-      const { pick, char, top, tied, coinFlip, screened, kinds, cost: stepCost } = step;
+      const { pick, char, top, tied, coinFlip, screened, kinds, rounds, cost: stepCost } = step;
       tokens += step.tokens ?? 0;
       cost += stepCost ?? 0;
       addUsage(step.tokens, stepCost);
@@ -483,6 +483,7 @@ async function ask(question) {
       span.dataset.pick = pick;
       if (screened) span.dataset.screened = screened;
       if (kinds) span.dataset.kinds = JSON.stringify(kinds);
+      if (rounds) span.dataset.rounds = JSON.stringify(rounds);
       if (tied > 1) {
         span.classList.add("tied");
         span.dataset.tied = tied;
@@ -601,22 +602,22 @@ function showTooltip(span) {
   const how = span.dataset.coin ? "coin flip" : "runoff";
   const tied = span.dataset.tied ? ` · ${span.dataset.tied}-way tie, ${how}` : "";
   const passed = span.dataset.screened;
-  tooltip.append(el("h4", null, `Jev's top picks${tied}`));
+  tooltip.append(el("h4", null, `${span.dataset.rounds ? "Jev's tournament" : "Jev's top picks"}${tied}`));
   if (span.dataset.kinds) {
     // Post: round 1 picked the kind of character.
     const kinds = JSON.parse(span.dataset.kinds).map(({ option, p }) => `${KIND_NAMES[option] ?? option} ${(p * 100).toFixed(0)}%`);
     tooltip.append(el("p", "screen-note", `Kind: ${kinds.join(" · ")}`));
   }
   if (passed) tooltip.append(el("p", "screen-note", passed === "1" ? "Only option to pass screening" : `${passed} options passed screening`));
-  for (const { option, p } of top) {
-    const row = el("div", `row${option === span.dataset.pick ? " picked" : ""}`);
-    const track = el("span", "track");
-    const fill = el("i");
-    fill.style.width = `${Math.max(p * 100, 1)}%`;
-    track.append(fill);
-    row.append(el("span", null, option), track, el("span", null, `${(p * 100).toFixed(1)}%`));
-    tooltip.append(row);
-  }
+  if (span.dataset.rounds) {
+    // Rock: a tournament, each round over only the top few of the one before.
+    const rounds = JSON.parse(span.dataset.rounds);
+    rounds.forEach(({ size, top: roundTop }, i) => {
+      const name = i === rounds.length - 1 && i > 0 ? "Final" : `Round ${i + 1}`;
+      tooltip.append(el("p", "round-name", `${name} · ${i === 0 ? `all ${size}` : `top ${size}`}`));
+      appendRows(roundTop, span.dataset.pick);
+    });
+  } else appendRows(top, span.dataset.pick);
   tooltip.hidden = false;
   const rect = span.getBoundingClientRect();
   const width = tooltip.offsetWidth;
@@ -626,6 +627,18 @@ function showTooltip(span) {
   tooltip.style.top = `${above > 8 ? above : rect.bottom + 10}px`;
   document.querySelector(".ch.active")?.classList.remove("active");
   span.classList.add("active");
+}
+
+function appendRows(options, pick) {
+  for (const { option, p } of options) {
+    const row = el("div", `row${option === pick ? " picked" : ""}`);
+    const track = el("span", "track");
+    const fill = el("i");
+    fill.style.width = `${Math.max(p * 100, 1)}%`;
+    track.append(fill);
+    row.append(el("span", null, option), track, el("span", null, `${(p * 100).toFixed(1)}%`));
+    tooltip.append(row);
+  }
 }
 
 function hideTooltip() {
