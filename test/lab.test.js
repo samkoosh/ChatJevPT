@@ -113,7 +113,7 @@ test("everyone's Doornail and Rock answers use the saved instructions", async ()
     const res = await next.handle(req("POST", "/api/next", { cookie: friend, body: { question: "Hi", answer: "", level } }), jev);
     assert.equal(res.status, 200);
   }
-  assert.deepEqual(jev.seen, ["Saved doornail.", "Saved rock."]);
+  assert.deepEqual(jev.seen, ["Saved doornail.", ...Array(3).fill("Saved rock.")], "every round of Rock's tournament");
 });
 
 test("an admin's draft applies to their own answers at that level only; others' drafts are ignored", async () => {
@@ -124,7 +124,7 @@ test("an admin's draft applies to their own answers at that level only; others' 
   await ask(owner, "doornail", "My doornail draft.");
   await ask(owner, "rock", "My rock draft.");
   await ask(friend, "rock", "Sneaky.");
-  assert.deepEqual(jev.seen, ["My doornail draft.", "My rock draft.", ROCK_INSTRUCTIONS]);
+  assert.deepEqual(jev.seen, ["My doornail draft.", ...Array(3).fill("My rock draft."), ...Array(3).fill(ROCK_INSTRUCTIONS)]);
 
   assert.equal((await ask(owner, "rock", "  ")).status, 400);
 });

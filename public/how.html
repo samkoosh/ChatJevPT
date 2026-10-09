@@ -86,9 +86,9 @@
               <tr><th></th><th>Doornail</th><th>Rock</th><th>Stump</th><th>Post</th></tr>
             </thead>
             <tbody>
-              <tr><th>Jev requests per character</th><td>1</td><td>1</td><td>2 (+ sense check, runoffs)</td><td>1–3 (+ sense check, runoffs)</td></tr>
+              <tr><th>Jev requests per character</th><td>1</td><td>3 (a tournament)</td><td>2 (+ sense check, runoffs)</td><td>1–3 (+ sense check, runoffs)</td></tr>
               <tr><th>Options</th><td>Every character</td><td>Every character</td><td>Only those code allows</td><td>Kinds first, then characters of that kind</td></tr>
-              <tr><th>Option labels</th><td>The character</td><td>The character, described as the answer it makes</td><td>The text it makes, e.g. "The sky is blu…"</td><td>Kind names, then as Stump</td></tr>
+              <tr><th>Option labels</th><td>The character</td><td>The whole answer it makes, e.g. "Par"</td><td>The text it makes, e.g. "The sky is blu…"</td><td>Kind names, then as Stump</td></tr>
               <tr><th>Real words only</th><td>No</td><td>No</td><td>Yes</td><td>Yes</td></tr>
               <tr><th>Checks (done, word, repeat, sense)</th><td>No</td><td>No</td><td>Yes</td><td>Yes</td></tr>
               <tr><th>Memory of earlier turns</th><td>No</td><td>No</td><td>Optional</td><td>Optional</td></tr>
@@ -120,14 +120,22 @@
       <section class="how-section level" id="level-rock">
         <h2>Rock</h2>
         <p>
-          The same single Choice over the same characters, but each option is the whole answer it would make, so Jev
-          ranks phrases rather than picking a letter to add: after "Pa", the options are "Par", "Pas", "Pa ", "Pa." and so
-          on, plus "Pa" (done) to stop. Jev isn't shown the answer so far on its own, just the question and how many
-          characters are left. Still no word list, no checks and no memory.
+          The same characters as Doornail, but each option is the whole answer it would make, so Jev ranks phrases
+          rather than picking a letter to add: after "Pa", the options are "Par", "Pas", "Pa ", "Pa." and so on, plus
+          "Pa" (done) to stop. Jev isn't shown the answer so far on its own, just the question and how many characters
+          are left. Still no word list, no checks and no memory.
         </p>
-        <div class="flow" role="img" aria-label="Flowchart: one Choice over the answers each character would make; the most probable wins.">
-          <div class="node jev">One Choice over the answers each character makes ("Par", "Pas", "Pa." …)</div>
-          <div class="node code">Most probable wins (coin flip on a tie)</div>
+        <p>
+          Each character is a three-round tournament, asking the same question each time: one Choice over every
+          option, then a fresh Choice over only the top <span data-n="ROCK_SEMIFINAL">5</span>, then over the top
+          <span data-n="ROCK_FINAL">2</span>. The more probable of the final two wins. A tie at a cut-off, or in the
+          final, is decided at random.
+        </p>
+        <div class="flow" role="img" aria-label="Flowchart: a Choice over every whole answer, then the top 5 again, then the top 2; the more probable of the final two wins.">
+          <div class="node jev">Round 1: one Choice over the answers each character makes ("Par", "Pas", "Pa." …)</div>
+          <div class="node jev">Round 2: the same Choice over only the top <span data-n="ROCK_SEMIFINAL">5</span></div>
+          <div class="node jev">Round 3: the same Choice over only the top <span data-n="ROCK_FINAL">2</span></div>
+          <div class="node code">More probable of the final two wins (coin flip on a tie)</div>
         </div>
         <details>
           <summary>What Jev is told</summary>
