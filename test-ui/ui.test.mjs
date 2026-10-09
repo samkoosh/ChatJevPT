@@ -411,7 +411,7 @@ describe("answer row", () => {
     assert.equal(await page.locator("#tooltip .row.picked").count(), 3, "the pick is marked in every round");
     await page.locator(".answer .ch").nth(1).hover();
     await page.waitForFunction(() => document.querySelectorAll("#tooltip .round-name").length === 2, null, T);
-    assert.deepEqual(await page.locator("#tooltip .round-name").allTextContents(), ["Round 1 · all 46", "Stopped early: Jev was 95.0% sure"]);
+    assert.deepEqual(await page.locator("#tooltip .round-name").allTextContents(), ["Round 1 · all 46", "Stopped early: I led by 93.0 points"]);
     await page.locator(".answer .ch").nth(2).hover();
     await page.waitForFunction(() => !document.querySelector("#tooltip .round-name"), null, T);
   });

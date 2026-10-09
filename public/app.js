@@ -619,8 +619,9 @@ function showTooltip(span) {
       appendRows(roundTop, span.dataset.pick);
     });
     if (span.dataset.stoppedEarly) {
-      const sure = rounds.at(-1).top[0].p;
-      tooltip.append(el("p", "round-name", `Stopped early: Jev was ${(sure * 100).toFixed(1)}% sure`));
+      const [first, second] = rounds.at(-1).top;
+      const lead = first.p - (second?.p ?? 0);
+      tooltip.append(el("p", "round-name", `Stopped early: ${first.option} led by ${(lead * 100).toFixed(1)} points`));
     }
   } else appendRows(top, span.dataset.pick);
   tooltip.hidden = false;

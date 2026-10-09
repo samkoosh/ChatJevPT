@@ -128,16 +128,17 @@
         <p>
           Each character is a three-round tournament, asking the same question each time: one Choice over every
           option, then a fresh Choice over only the top <span data-n="ROCK_SEMIFINAL">5</span>, then over the top
-          <span data-n="ROCK_FINAL">2</span>. The more probable of the final two wins. If any earlier round has an option at
-          <span data-n="ROCK_CONFIDENT">0.9</span> or more, it wins right there and the rest is skipped. Options are
+          <span data-n="ROCK_FINAL">2</span>. The more probable of the final two wins. If in any earlier round the top option is
+          ahead of the runner-up by <span data-n="ROCK_LEAD">0.5</span> or more (say 0.7 against 0.2), it wins right
+          there and the rest is skipped. Options are
           listed in a fresh random order in every request, so their position can't sway Jev. A tie at a cut-off, or in
           the final, is decided at random. Hover a character in a Rock answer to see the top of each round.
         </p>
-        <div class="flow" role="img" aria-label="Flowchart: a Choice over every whole answer in random order, then the top 5 again, then the top 2; an option at 0.9 or more after round 1 or 2 wins early; otherwise the more probable of the final two wins.">
+        <div class="flow" role="img" aria-label="Flowchart: a Choice over every whole answer in random order, then the top 5 again, then the top 2; an option ahead of the runner-up by 0.5 or more after round 1 or 2 wins early; otherwise the more probable of the final two wins.">
           <div class="node jev">Round 1: one Choice over the answers each character makes ("Par", "Pas", "Pa." …), in random order</div>
-          <div class="node code">Any option at <span data-n="ROCK_CONFIDENT">0.9</span> or more? It wins; stop</div>
+          <div class="node code">Top option ahead of the next by <span data-n="ROCK_LEAD">0.5</span> or more? It wins; stop</div>
           <div class="node jev">Round 2: the same Choice over only the top <span data-n="ROCK_SEMIFINAL">5</span></div>
-          <div class="node code">Any option at <span data-n="ROCK_CONFIDENT">0.9</span> or more? It wins; stop</div>
+          <div class="node code">Top option ahead of the next by <span data-n="ROCK_LEAD">0.5</span> or more? It wins; stop</div>
           <div class="node jev">Round 3: the same Choice over only the top <span data-n="ROCK_FINAL">2</span></div>
           <div class="node code">More probable of the final two wins (coin flip on a tie)</div>
         </div>

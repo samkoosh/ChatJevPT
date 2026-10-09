@@ -56,7 +56,7 @@ test("Doornail offers END once something is written, and has no other rules", as
 test("Rock: one Choice whose options are the whole answers they'd make, plus characters left", async () => {
   const jev = recorder('"Par"');
   const r = await rockCharacter("What is the capital of France?", "Pa", jev);
-  assert.equal(jev.requests.length, 1, "R is 90% sure in round one, so the tournament stops there");
+  assert.equal(jev.requests.length, 1, "R leads by far more than 0.5 in round one, so the tournament stops there");
   assert.equal(r.stoppedEarly, true);
   const { state, questions } = jev.requests[0];
   assert.deepEqual(state, { question: "What is the capital of France?", characters_remaining: MAX_LENGTH - 2 }, "the options carry the answer");
@@ -103,8 +103,9 @@ test("Rock's tournament: the top 5 of round one go on, then the top 2, and the f
   assert.equal(r.stoppedEarly, false, "a sure final isn't stopping early");
 });
 
-test("Rock's tournament stops as soon as a round is 90% sure", async () => {
-  const prefs = [{ '"A"': 0.6, '"B"': 0.3 }, { '"B"': 0.92, '"A"': 0.08 }];
+test("Rock's tournament stops as soon as the leader is 0.5 ahead of the runner-up", async () => {
+  // Round one: A leads B by 0.45, not enough. Round two: B leads A by 0.5 exactly, so it stops.
+  const prefs = [{ '"A"': 0.6, '"B"': 0.15 }, { '"B"': 0.7, '"A"': 0.2, '"C"': 0.1 }];
   const requests = [];
   const systemOne = async (req) => {
     const labels = Object.keys(req.questions.next.criteria);
