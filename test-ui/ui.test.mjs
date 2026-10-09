@@ -399,7 +399,8 @@ describe("answer row", () => {
       { size: 5, top: [{ option: "H", p: 0.5 }, { option: "Y", p: 0.3 }, { option: "O", p: 0.1 }, { option: "A", p: 0.06 }, { option: "W", p: 0.04 }] },
       { size: 2, top: [{ option: "H", p: 0.8 }, { option: "Y", p: 0.2 }] },
     ];
-    await page.route("**/api/next", scripted("Hi", { overrides: { 0: { rounds } } }));
+    const early = { rounds: [{ size: 46, top: [{ option: "I", p: 0.95 }, { option: "E", p: 0.02 }] }], stoppedEarly: true };
+    await page.route("**/api/next", scripted("Hi!", { overrides: { 0: { rounds }, 1: early } }));
     await askViaUI(page, "Q");
     await waitAnswered(page);
     await page.locator(".answer .ch").nth(0).hover();
@@ -409,6 +410,9 @@ describe("answer row", () => {
     assert.equal(await page.locator("#tooltip .row").count(), 12);
     assert.equal(await page.locator("#tooltip .row.picked").count(), 3, "the pick is marked in every round");
     await page.locator(".answer .ch").nth(1).hover();
+    await page.waitForFunction(() => document.querySelectorAll("#tooltip .round-name").length === 2, null, T);
+    assert.deepEqual(await page.locator("#tooltip .round-name").allTextContents(), ["Round 1 · all 46", "Stopped early: Jev was 95.0% sure"]);
+    await page.locator(".answer .ch").nth(2).hover();
     await page.waitForFunction(() => !document.querySelector("#tooltip .round-name"), null, T);
   });
 });

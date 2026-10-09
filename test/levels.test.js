@@ -56,7 +56,8 @@ test("Doornail offers END once something is written, and has no other rules", as
 test("Rock: one Choice whose options are the whole answers they'd make, plus characters left", async () => {
   const jev = recorder('"Par"');
   const r = await rockCharacter("What is the capital of France?", "Pa", jev);
-  assert.equal(jev.requests.length, 3, "a tournament: everything, the top 5, the top 2");
+  assert.equal(jev.requests.length, 1, "R is 90% sure in round one, so the tournament stops there");
+  assert.equal(r.stoppedEarly, true);
   const { state, questions } = jev.requests[0];
   assert.deepEqual(state, { question: "What is the capital of France?", characters_remaining: MAX_LENGTH - 2 }, "the options carry the answer");
   const { criteria, instructions } = questions.next;
@@ -99,6 +100,33 @@ test("Rock's tournament: the top 5 of round one go on, then the top 2, and the f
   assert.deepEqual(r.rounds.map((round) => round.size), [requests[0].length, 5, 2], "each round's size, for the tooltip");
   assert.deepEqual(r.rounds[0].top.map((t) => t.option), ["A", "B", "C", "D", "E"]);
   assert.deepEqual(r.rounds[2].top, [{ option: "B", p: 0.7 }, { option: "E", p: 0.3 }]);
+  assert.equal(r.stoppedEarly, false, "a sure final isn't stopping early");
+});
+
+test("Rock's tournament stops as soon as a round is 90% sure", async () => {
+  const prefs = [{ '"A"': 0.6, '"B"': 0.3 }, { '"B"': 0.92, '"A"': 0.08 }];
+  const requests = [];
+  const systemOne = async (req) => {
+    const labels = Object.keys(req.questions.next.criteria);
+    const p = prefs[requests.length];
+    requests.push(labels);
+    return { answers: { next: { type: "choice", probabilities: Object.fromEntries(labels.map((l) => [l, p[l] ?? 0])) } } };
+  };
+  const r = await rockCharacter("q", "", { systemOne });
+  assert.equal(requests.length, 2, "no final");
+  assert.equal(r.pick, "B");
+  assert.equal(r.stoppedEarly, true);
+  assert.equal(r.rounds.length, 2);
+});
+
+test("Rock lists its options in a fresh random order every request", async () => {
+  const orders = new Set();
+  const systemOne = async (req) => {
+    orders.add(Object.keys(req.questions.next.criteria).join("|"));
+    return { answers: { next: { type: "choice", probabilities: {} } } };
+  };
+  for (let i = 0; i < 5; i++) await rockCharacter("q", "Pa", { systemOne });
+  assert.ok(orders.size > 5, `only ${orders.size} different orders across 15 requests`);
 });
 
 test("pickNext: Doornail ignores memory; Stump drops history when memory is off", async () => {

@@ -86,7 +86,7 @@
               <tr><th></th><th>Doornail</th><th>Rock</th><th>Stump</th><th>Post</th></tr>
             </thead>
             <tbody>
-              <tr><th>Jev requests per character</th><td>1</td><td>3 (a tournament)</td><td>2 (+ sense check, runoffs)</td><td>1–3 (+ sense check, runoffs)</td></tr>
+              <tr><th>Jev requests per character</th><td>1</td><td>1–3 (a tournament)</td><td>2 (+ sense check, runoffs)</td><td>1–3 (+ sense check, runoffs)</td></tr>
               <tr><th>Options</th><td>Every character</td><td>Every character</td><td>Only those code allows</td><td>Kinds first, then characters of that kind</td></tr>
               <tr><th>Option labels</th><td>The character</td><td>The whole answer it makes, e.g. "Par"</td><td>The text it makes, e.g. "The sky is blu…"</td><td>Kind names, then as Stump</td></tr>
               <tr><th>Real words only</th><td>No</td><td>No</td><td>Yes</td><td>Yes</td></tr>
@@ -128,12 +128,16 @@
         <p>
           Each character is a three-round tournament, asking the same question each time: one Choice over every
           option, then a fresh Choice over only the top <span data-n="ROCK_SEMIFINAL">5</span>, then over the top
-          <span data-n="ROCK_FINAL">2</span>. The more probable of the final two wins. A tie at a cut-off, or in the
-          final, is decided at random. Hover a character in a Rock answer to see the top of each round.
+          <span data-n="ROCK_FINAL">2</span>. The more probable of the final two wins. If any earlier round has an option at
+          <span data-n="ROCK_CONFIDENT">0.9</span> or more, it wins right there and the rest is skipped. Options are
+          listed in a fresh random order in every request, so their position can't sway Jev. A tie at a cut-off, or in
+          the final, is decided at random. Hover a character in a Rock answer to see the top of each round.
         </p>
-        <div class="flow" role="img" aria-label="Flowchart: a Choice over every whole answer, then the top 5 again, then the top 2; the more probable of the final two wins.">
-          <div class="node jev">Round 1: one Choice over the answers each character makes ("Par", "Pas", "Pa." …)</div>
+        <div class="flow" role="img" aria-label="Flowchart: a Choice over every whole answer in random order, then the top 5 again, then the top 2; an option at 0.9 or more after round 1 or 2 wins early; otherwise the more probable of the final two wins.">
+          <div class="node jev">Round 1: one Choice over the answers each character makes ("Par", "Pas", "Pa." …), in random order</div>
+          <div class="node code">Any option at <span data-n="ROCK_CONFIDENT">0.9</span> or more? It wins; stop</div>
           <div class="node jev">Round 2: the same Choice over only the top <span data-n="ROCK_SEMIFINAL">5</span></div>
+          <div class="node code">Any option at <span data-n="ROCK_CONFIDENT">0.9</span> or more? It wins; stop</div>
           <div class="node jev">Round 3: the same Choice over only the top <span data-n="ROCK_FINAL">2</span></div>
           <div class="node code">More probable of the final two wins (coin flip on a tie)</div>
         </div>
