@@ -56,7 +56,7 @@ test("Doornail offers END once something is written, and has no other rules", as
 test("Rock: one Choice whose options are the whole answers they'd make, plus characters left", async () => {
   const jev = recorder('"Par"');
   const r = await rockCharacter("What is the capital of France?", "Pa", jev);
-  assert.equal(jev.requests.length, 1, "still a single request");
+  assert.equal(jev.requests.length, 3, "a tournament: everything, the top 5, the top 2");
   const { state, questions } = jev.requests[0];
   assert.deepEqual(state, { question: "What is the capital of France?", characters_remaining: MAX_LENGTH - 2 }, "the options carry the answer");
   const { criteria, instructions } = questions.next;
@@ -75,6 +75,32 @@ test("Rock: one Choice whose options are the whole answers they'd make, plus cha
   assert.ok(!Object.keys(first.requests[0].questions.next.criteria).some((l) => l.endsWith("(done)")), "can't end before writing anything");
 });
 
+test("Rock's tournament: the top 5 of round one go on, then the top 2, and the final decides", async () => {
+  // Round one prefers A > B > C > D > E > F; round two flips to E; the final flips again to B.
+  const prefs = [
+    { '"A"': 0.3, '"B"': 0.25, '"C"': 0.2, '"D"': 0.1, '"E"': 0.08, '"F"': 0.07 },
+    { '"A"': 0.1, '"B"': 0.3, '"C"': 0.05, '"D"': 0.05, '"E"': 0.5 },
+    { '"B"': 0.7, '"E"': 0.3 },
+  ];
+  const requests = [];
+  const systemOne = async (req) => {
+    const labels = Object.keys(req.questions.next.criteria);
+    const p = prefs[requests.length];
+    requests.push(labels);
+    return { answers: { next: { type: "choice", probabilities: Object.fromEntries(labels.map((l) => [l, p[l] ?? 0])) } }, usage: { input_tokens: 10, output_tokens: 0 } };
+  };
+  const r = await rockCharacter("q", "", { systemOne });
+  assert.equal(requests.length, 3);
+  assert.ok(requests[0].length > 40, "round one is every option");
+  assert.deepEqual(requests[1].slice().sort(), ['"A"', '"B"', '"C"', '"D"', '"E"'].sort());
+  assert.deepEqual(requests[2].slice().sort(), ['"B"', '"E"']);
+  assert.equal(r.pick, "B", "the final's winner, not round one's");
+  assert.equal(r.tokens, 30, "all three rounds are counted");
+  assert.deepEqual(r.rounds.map((round) => round.size), [requests[0].length, 5, 2], "each round's size, for the tooltip");
+  assert.deepEqual(r.rounds[0].top.map((t) => t.option), ["A", "B", "C", "D", "E"]);
+  assert.deepEqual(r.rounds[2].top, [{ option: "B", p: 0.7 }, { option: "E", p: 0.3 }]);
+});
+
 test("pickNext: Doornail ignores memory; Stump drops history when memory is off", async () => {
   const history = [{ question: "What is the capital of France?", answer: "Paris" }];
   const doornail = recorder();
@@ -83,8 +109,8 @@ test("pickNext: Doornail ignores memory; Stump drops history when memory is off"
   assert.equal("previous_turns" in doornail.requests[0].state, false);
   const rock = recorder();
   await pickNext("What about Germany?", "", history, { level: "rock", memory: true, ...rock });
-  assert.equal(rock.requests.length, 1);
-  assert.equal("previous_turns" in rock.requests[0].state, false, "Rock ignores memory too");
+  assert.equal(rock.requests.length, 3);
+  assert.ok(rock.requests.every((r) => !("previous_turns" in r.state)), "Rock ignores memory too");
 
   const on = recorder();
   await pickNext("What about Germany?", "", history, { level: "stump", memory: true, ...on });
@@ -115,7 +141,7 @@ test("API: level and memory", async () => {
 
     const rock = recorder();
     assert.equal((await handle(post({ question: "Hi", answer: "", level: "rock", history }), rock)).status, 200);
-    assert.equal(rock.requests.length, 1);
+    assert.equal(rock.requests.length, 3);
     assert.deepEqual(Object.keys(rock.requests[0].state), ["question", "characters_remaining"]);
 
     const forgetful = recorder();

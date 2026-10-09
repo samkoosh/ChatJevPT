@@ -851,6 +851,16 @@ main:not(.empty) .composer-wrap {
   color: var(--text-faint);
 }
 
+.tooltip .round-name {
+  margin: 10px 0 4px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.tooltip h4 + .round-name {
+  margin-top: 0;
+}
+
 .tooltip .row {
   display: grid;
   grid-template-columns: 52px 1fr 44px;
