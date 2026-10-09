@@ -77,7 +77,6 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
 }
 
 /* Light "Windows 98" panels: dark text on gray, wherever they appear. */
-[data-ui-theme="y2k"] .msg-jev > div:last-child,
 [data-ui-theme="y2k"] .composer,
 [data-ui-theme="y2k"] .tooltip,
 [data-ui-theme="y2k"] .sidebar,
@@ -165,8 +164,7 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
 }
 
 [data-ui-theme="y2k"] .brand .spark,
-[data-ui-theme="y2k"] .hero-spark,
-[data-ui-theme="y2k"] .msg-jev .avatar {
+[data-ui-theme="y2k"] .hero-spark {
   fill: #ffff00;
   filter: drop-shadow(0 0 3px #ff00ff);
   animation: y2k-spin 4s linear infinite;
@@ -409,100 +407,82 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
   right: -12px;
 }
 
-/* ---- Thread -------------------------------------------------------------- */
+/* ---- Thread: an AOL Instant Message window ------------------------------- */
 
-/* You: an instant-messenger bubble. */
-[data-ui-theme="y2k"] .msg-user {
-  background: #ffffcc;
-  color: #0000cc;
-  border: 2px solid #000;
-  border-radius: 16px 16px 0 16px;
-  font-weight: 700;
-  transform: rotate(1.2deg);
-  box-shadow: 4px 4px 0 #ff00ff;
+/* One window holds the whole conversation: a title bar, then a plain white
+   transcript of "ScreenName: message" lines, like AIM circa 1999. */
+[data-ui-theme="y2k"] .thread {
+  --text: #000;
+  --text-dim: #000;
+  --text-faint: #444;
+  --surface: #d4d0c8;
+  --surface-2: #ffffff;
+  --border: #808080;
+  --accent-soft: #ffff00;
+  gap: 6px;
+  margin: 16px 0 12px;
+  padding: 0 12px 12px;
+  background: #fff;
+  color: #000;
+  border: 3px solid #c0c0c0;
+  border-top: 0;
+  box-shadow: inset 2px 2px #808080, 0 0 0 1px #000, 5px 5px 0 rgba(0, 0, 0, 0.6);
+  font-family: Arial, Helvetica, var(--y2k-comic);
 }
 
-[data-ui-theme="y2k"] .msg-user::before {
-  content: "xX_y0u_Xx says:";
-  display: block;
-  color: #cc0000;
-  font-size: 12px;
-  font-weight: 400;
-  font-style: italic;
-}
-
-/* Jev: a Windows 98 dialog box. */
-[data-ui-theme="y2k"] .msg-jev {
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 10px;
-}
-
-[data-ui-theme="y2k"] .msg-jev .avatar {
-  width: 30px;
-  height: 30px;
-}
-
-[data-ui-theme="y2k"] .msg-jev > div:last-child {
-  position: relative;
-  min-width: 0;
-  background: #c0c0c0;
-  border: 3px outset #f0f0f0;
-  padding: 32px 10px 10px;
-  transform: rotate(-0.5deg);
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.7);
-}
-
-[data-ui-theme="y2k"] .msg-jev > div:last-child::before {
-  content: "Jev.exe - Answer";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  right: 2px;
-  height: 24px;
-  padding: 0 34px 0 8px;
+[data-ui-theme="y2k"] .thread::before {
+  content: "✉ Instant Message With JevBot2000";
+  margin: 0 -12px 6px;
+  padding: 3px 8px;
   background: var(--y2k-title);
   color: #fff;
-  font: bold 13px/24px Tahoma, Verdana, var(--y2k-comic);
+  font: bold 13px/20px Tahoma, Verdana, sans-serif;
+  border-bottom: 3px solid #c0c0c0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-[data-ui-theme="y2k"] .msg-jev.typing > div:last-child::before {
-  content: "Jev.exe - Typing... (Not Responding)";
-}
-
-[data-ui-theme="y2k"] .msg-jev > div:last-child::after {
-  content: "✕";
-  position: absolute;
-  top: 5px;
-  right: 6px;
-  width: 20px;
-  height: 18px;
-  background: #c0c0c0;
+/* Every line: a bold screen name, then the message. No bubbles. */
+[data-ui-theme="y2k"] .msg-user,
+[data-ui-theme="y2k"] .answer {
+  font: 16px/1.5 Arial, Helvetica, var(--y2k-comic);
   color: #000;
-  border: 2px outset #f0f0f0;
-  font: bold 11px/14px Verdana, sans-serif;
-  text-align: center;
 }
 
-/* A rainbow <hr> after every finished turn. */
-[data-ui-theme="y2k"] .msg-jev:not(.typing)::after {
-  content: "";
-  grid-column: 1 / -1;
-  height: 5px;
-  margin-top: 14px;
-  background: var(--y2k-rainbow);
-  box-shadow: 0 0 8px rgba(255, 0, 255, 0.6);
-  transform: rotate(-0.6deg);
+[data-ui-theme="y2k"] .msg-user {
+  align-self: stretch;
+  max-width: none;
+  margin-top: 8px;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  animation: none;
+}
+
+[data-ui-theme="y2k"] .msg-user::before {
+  content: "xX_y0u_Xx: ";
+  color: #cc0000;
+  font-weight: 700;
+}
+
+[data-ui-theme="y2k"] .msg-jev {
+  display: block;
+  animation: none;
+}
+
+[data-ui-theme="y2k"] .msg-jev .avatar {
+  display: none;
 }
 
 [data-ui-theme="y2k"] .answer {
-  background: #fff;
-  color: #000;
-  padding: 8px 12px;
-  font-size: 18px;
-  box-shadow: inset 2px 2px #808080, inset -2px -2px #fff, inset 3px 3px #404040;
+  min-height: 0;
+}
+
+[data-ui-theme="y2k"] .answer::before {
+  content: "JevBot2000: ";
+  color: #0000cc;
+  font-weight: 700;
 }
 
 [data-ui-theme="y2k"] .answer .ch {
@@ -512,34 +492,36 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
 [data-ui-theme="y2k"] .answer .ch:hover,
 [data-ui-theme="y2k"] .answer .ch.active {
   background: #ffff00;
-  outline: 1px dotted #ff00ff;
+  outline: 1px dotted #0000cc;
 }
 
 [data-ui-theme="y2k"] .answer .ch.tied {
-  text-decoration-color: #ff00ff;
+  text-decoration-color: #0000cc;
 }
 
 [data-ui-theme="y2k"] .thinking {
-  color: #000080;
+  color: #555;
+  font-size: 14px;
   font-style: italic;
 }
 
 [data-ui-theme="y2k"] .caret {
-  width: 10px;
+  width: 8px;
   border-radius: 0;
-  background: linear-gradient(180deg, #ff0000, #ffff00, #00ff00, #00ffff, #ff00ff);
+  background: #000;
 }
 
-/* The answer row: counts, a segmented progress bar, beveled buttons. */
+/* The answer row: small gray details under Jev's line, beveled buttons. */
 [data-ui-theme="y2k"] .meta {
-  color: #000;
-  font-size: 13px;
-  gap: 6px 12px;
+  margin-top: 2px;
+  color: #444;
+  font: 12px Arial, Helvetica, sans-serif;
+  gap: 4px 10px;
 }
 
 [data-ui-theme="y2k"] .meta .bar {
-  width: 104px;
-  height: 16px;
+  width: 80px;
+  height: 12px;
   border-radius: 0;
   background: #fff;
   border: 2px inset #f0f0f0;
@@ -550,32 +532,31 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
   bottom: 1px;
   left: 1px;
   border-radius: 0;
-  background: repeating-linear-gradient(90deg, #000080 0 8px, transparent 8px 10px);
+  background: repeating-linear-gradient(90deg, #000080 0 6px, transparent 6px 8px);
 }
 
 [data-ui-theme="y2k"] .meta .act {
   margin: 0;
-  padding: 1px 8px;
-  font-weight: 700;
+  padding: 0 6px;
+  font: 12px Tahoma, Verdana, sans-serif;
 }
 
 [data-ui-theme="y2k"] .meta .act svg {
-  stroke-width: 2.6;
+  stroke-width: 2.4;
 }
 
 [data-ui-theme="y2k"] .meta .stop-answer {
   color: #cc0000;
 }
 
-/* Rating chips: tilted stickers. */
+/* Rating chips: little stickers. */
 [data-ui-theme="y2k"] .rating {
-  border: 2px solid #000;
+  border: 1px solid #000;
   border-radius: 0;
   color: #000;
-  font: bold 13px/18px var(--y2k-comic);
-  padding: 1px 8px;
-  transform: rotate(-5deg);
-  box-shadow: 2px 2px 0 #000;
+  font: bold 12px/16px var(--y2k-comic);
+  padding: 0 6px;
+  box-shadow: 1px 1px 0 #000;
 }
 
 [data-ui-theme="y2k"] .rating.pending {
@@ -624,10 +605,9 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
 [data-ui-theme="y2k"] .notice {
   background: #ffff99;
   color: #000;
-  border: 4px double #cc0000;
+  border: 3px double #cc0000;
   border-radius: 0;
-  transform: rotate(0.8deg);
-  box-shadow: 4px 4px 0 #000;
+  box-shadow: 2px 2px 0 #000;
 }
 
 [data-ui-theme="y2k"] .notice svg {
@@ -1073,21 +1053,16 @@ html:not([data-ui-theme="y2k"]) .y2k-sparkle {
     font-size: 13px;
     padding: 2px 6px;
   }
-  [data-ui-theme="y2k"] .msg-jev {
-    grid-template-columns: minmax(0, 1fr);
+  [data-ui-theme="y2k"] .thread {
+    padding: 0 8px 10px;
+    box-shadow: inset 2px 2px #808080, 0 0 0 1px #000, 3px 3px 0 rgba(0, 0, 0, 0.6);
   }
-  [data-ui-theme="y2k"] .msg-jev .avatar {
-    display: none;
+  [data-ui-theme="y2k"] .thread::before {
+    margin: 0 -8px 4px;
   }
-  [data-ui-theme="y2k"] .msg-jev > div:last-child {
-    transform: none;
-    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.7);
-  }
-  [data-ui-theme="y2k"] .msg-user {
-    transform: rotate(0.6deg);
-  }
+  [data-ui-theme="y2k"] .msg-user,
   [data-ui-theme="y2k"] .answer {
-    font-size: 17px;
+    font-size: 15px;
   }
   [data-ui-theme="y2k"] .composer {
     box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.7);
