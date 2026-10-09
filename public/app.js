@@ -467,7 +467,7 @@ async function ask(question) {
     if (signedIn() && !savedChat) savedChat = await createChat(controller.signal);
     while (answer.length < MAX_LENGTH) {
       const step = await fetchNext(question, answer, priorTurns, controller.signal, savedChat, settings);
-      const { pick, char, top, tied, coinFlip, screened, kinds, rounds, cost: stepCost } = step;
+      const { pick, char, top, tied, coinFlip, screened, kinds, rounds, stoppedEarly, cost: stepCost } = step;
       tokens += step.tokens ?? 0;
       cost += stepCost ?? 0;
       addUsage(step.tokens, stepCost);
@@ -484,6 +484,7 @@ async function ask(question) {
       if (screened) span.dataset.screened = screened;
       if (kinds) span.dataset.kinds = JSON.stringify(kinds);
       if (rounds) span.dataset.rounds = JSON.stringify(rounds);
+      if (stoppedEarly) span.dataset.stoppedEarly = "1";
       if (tied > 1) {
         span.classList.add("tied");
         span.dataset.tied = tied;
@@ -613,10 +614,15 @@ function showTooltip(span) {
     // Rock: a tournament, each round over only the top few of the one before.
     const rounds = JSON.parse(span.dataset.rounds);
     rounds.forEach(({ size, top: roundTop }, i) => {
-      const name = i === rounds.length - 1 && i > 0 ? "Final" : `Round ${i + 1}`;
+      const name = i === rounds.length - 1 && i > 0 && !span.dataset.stoppedEarly ? "Final" : `Round ${i + 1}`;
       tooltip.append(el("p", "round-name", `${name} · ${i === 0 ? `all ${size}` : `top ${size}`}`));
       appendRows(roundTop, span.dataset.pick);
     });
+    if (span.dataset.stoppedEarly) {
+      const [first, second] = rounds.at(-1).top;
+      const lead = first.p - (second?.p ?? 0);
+      tooltip.append(el("p", "round-name", `Stopped early: ${first.option} led by ${(lead * 100).toFixed(1)} points`));
+    }
   } else appendRows(top, span.dataset.pick);
   tooltip.hidden = false;
   const rect = span.getBoundingClientRect();
