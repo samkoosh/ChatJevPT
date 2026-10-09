@@ -391,6 +391,26 @@ describe("answer row", () => {
     await page.locator(".answer .ch").nth(1).hover();
     await page.waitForFunction(() => document.querySelector("#tooltip .screen-note")?.textContent === "Only option to pass screening", null, T);
   });
+
+  test("Rock's tooltip shows every round of its tournament", async () => {
+    const page = await open();
+    const rounds = [
+      { size: 46, top: [{ option: "H", p: 0.4 }, { option: "Y", p: 0.2 }, { option: "O", p: 0.1 }, { option: "A", p: 0.05 }, { option: "W", p: 0.04 }] },
+      { size: 5, top: [{ option: "H", p: 0.5 }, { option: "Y", p: 0.3 }, { option: "O", p: 0.1 }, { option: "A", p: 0.06 }, { option: "W", p: 0.04 }] },
+      { size: 2, top: [{ option: "H", p: 0.8 }, { option: "Y", p: 0.2 }] },
+    ];
+    await page.route("**/api/next", scripted("Hi", { overrides: { 0: { rounds } } }));
+    await askViaUI(page, "Q");
+    await waitAnswered(page);
+    await page.locator(".answer .ch").nth(0).hover();
+    await page.locator("#tooltip .round-name").first().waitFor(T);
+    assert.equal(await page.locator("#tooltip h4").textContent(), "Jev's tournament");
+    assert.deepEqual(await page.locator("#tooltip .round-name").allTextContents(), ["Round 1 · all 46", "Round 2 · top 5", "Final · top 2"]);
+    assert.equal(await page.locator("#tooltip .row").count(), 12);
+    assert.equal(await page.locator("#tooltip .row.picked").count(), 3, "the pick is marked in every round");
+    await page.locator(".answer .ch").nth(1).hover();
+    await page.waitForFunction(() => !document.querySelector("#tooltip .round-name"), null, T);
+  });
 });
 
 describe("answer rating", () => {
