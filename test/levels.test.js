@@ -53,28 +53,26 @@ test("Doornail offers END once something is written, and has no other rules", as
   assert.equal(r.char, " ", "double spaces are fine for a doornail");
 });
 
-test("Rock: one Choice whose options are described as the answer they'd make, plus characters left", async () => {
-  const jev = recorder("R");
+test("Rock: one Choice whose options are the whole answers they'd make, plus characters left", async () => {
+  const jev = recorder('"Par"');
   const r = await rockCharacter("What is the capital of France?", "Pa", jev);
   assert.equal(jev.requests.length, 1, "still a single request");
   const { state, questions } = jev.requests[0];
-  assert.deepEqual(state, { question: "What is the capital of France?", answer_so_far: "Pa", characters_remaining: MAX_LENGTH - 2 });
+  assert.deepEqual(state, { question: "What is the capital of France?", characters_remaining: MAX_LENGTH - 2 }, "the options carry the answer");
   const { criteria, instructions } = questions.next;
-  assert.equal(criteria.R, "Par", "letters are cased as they'd be typed");
-  assert.equal(criteria.space, "Pa ");
-  assert.equal(criteria.NEWLINE, "Pa\n");
-  assert.equal(criteria["."], "Pa.");
-  assert.equal(criteria["4"], "Pa4");
-  assert.equal(criteria[END], "Pa", "END keeps the answer as it is");
-  assert.match(instructions, /one more character added/);
+  const labels = Object.keys(criteria);
+  for (const label of ['"Par"', '"Pa "', '"Pa / "', '"Pa."', '"Pa4"', '"Pa" (done)']) assert.ok(labels.includes(label), label);
+  assert.ok(!labels.includes('"PaR"'), "letters are cased as they'd be typed");
+  assert.equal(criteria['"Par"'], null, "a letter needs no description");
+  assert.match(criteria['"Pa" (done)'], /finished/);
+  assert.match(instructions, /possible answer/);
   assert.equal(r.pick, "R");
   assert.equal(r.char, "r");
 
-  const first = recorder("P");
-  await rockCharacter("q", "", first);
-  const opening = first.requests[0].questions.next.criteria;
-  assert.equal(opening.P, "P");
-  assert.ok(!(END in opening), "can't end before writing anything");
+  const first = recorder('"P"');
+  const opening = await rockCharacter("q", "", first);
+  assert.equal(opening.pick, "P");
+  assert.ok(!Object.keys(first.requests[0].questions.next.criteria).some((l) => l.endsWith("(done)")), "can't end before writing anything");
 });
 
 test("pickNext: Doornail ignores memory; Stump drops history when memory is off", async () => {
@@ -118,7 +116,7 @@ test("API: level and memory", async () => {
     const rock = recorder();
     assert.equal((await handle(post({ question: "Hi", answer: "", level: "rock", history }), rock)).status, 200);
     assert.equal(rock.requests.length, 1);
-    assert.deepEqual(Object.keys(rock.requests[0].state), ["question", "answer_so_far", "characters_remaining"]);
+    assert.deepEqual(Object.keys(rock.requests[0].state), ["question", "characters_remaining"]);
 
     const forgetful = recorder();
     await handle(post({ question: "Hi", answer: "", memory: false, history }), forgetful);

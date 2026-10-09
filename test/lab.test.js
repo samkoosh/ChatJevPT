@@ -91,8 +91,8 @@ test("the example state is made-up data in the shape each level sends", async ()
   const doornail = await (await get("doornail", owner)).json();
   assert.deepEqual(doornail.request.state, { question: LAB_EXAMPLE.question, answer_so_far: LAB_EXAMPLE.answer });
   const rock = await (await get("rock", owner)).json();
-  assert.deepEqual(rock.request.state, { question: LAB_EXAMPLE.question, answer_so_far: "Pa", characters_remaining: MAX_LENGTH - 2 });
-  assert.equal(rock.request.questions.next.criteria.R, "Par", "Rock's descriptions use the example answer");
+  assert.deepEqual(rock.request.state, { question: LAB_EXAMPLE.question, characters_remaining: MAX_LENGTH - 2 });
+  assert.ok('"Par"' in rock.request.questions.next.criteria, "Rock's options use the example answer");
 });
 
 test("instructions are validated", async () => {

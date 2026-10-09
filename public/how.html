@@ -120,12 +120,13 @@
       <section class="how-section level" id="level-rock">
         <h2>Rock</h2>
         <p>
-          The same single Choice over the same characters, but each option is described as the answer it would make:
-          after "Pa", R is described as "Par", and END as "Pa" (the answer as it stands). The state also says how many
+          The same single Choice over the same characters, but each option is the whole answer it would make, so Jev
+          ranks phrases rather than picking a letter to add: after "Pa", the options are "Par", "Pas", "Pa ", "Pa." and so
+          on, plus "Pa" (done) to stop. Jev isn't shown the answer so far on its own, just the question and how many
           characters are left. Still no word list, no checks and no memory.
         </p>
-        <div class="flow" role="img" aria-label="Flowchart: one Choice over every character, each described as the resulting answer; the most probable wins.">
-          <div class="node jev">One Choice over every character, each described as the answer it makes</div>
+        <div class="flow" role="img" aria-label="Flowchart: one Choice over the answers each character would make; the most probable wins.">
+          <div class="node jev">One Choice over the answers each character makes ("Par", "Pas", "Pa." …)</div>
           <div class="node code">Most probable wins (coin flip on a tie)</div>
         </div>
         <details>
